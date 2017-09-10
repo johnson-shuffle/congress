@@ -1,48 +1,35 @@
 # ------------------------------------------------------------------------------
 # voteview function
 # ------------------------------------------------------------------------------
-voteview <- function(congress, chamber = NULL, type = NULL) {
+voteview <- function(congress, type = NULL) {
   
-  if (is.null(chamber) | is.null(type)) break
+  stopifnot(!is.null(type))
   
   url <- 'https://voteview.com/static/data/out/'
-  url <- str_c(url, type, '/', chamber, congress, '_', type, '.csv')
-  read_csv(url)
+  url1 <- str_c(url, type, '/', 'H', congress, '_', type, '.csv')
+  url2 <- str_c(url, type, '/', 'S', congress, '_', type, '.csv')
   
+  rbind(read_csv(url1, col_types = cols()), read_csv(url2, col_types = cols()))
+
 }
 
 # ------------------------------------------------------------------------------
 # house vote info & casts, and member data
 # ------------------------------------------------------------------------------
-hou_info <- map(103:114, voteview, chamber = 'H', type = 'rollcalls')
-hou_info <- do.call(rbind, hou_info)
+voteview_info <- map(103:114, voteview, type = 'rollcalls')
+voteview_info <- do.call(rbind, voteview_info) 
 
-hou_cast <- map(103:114, voteview, chamber = 'H', type = 'votes')
-hou_cast <- do.call(rbind, hou_cast)
+voteview_cast <- map(103:114, voteview, type = 'votes')
+voteview_cast <- do.call(rbind, voteview_cast)
 
-hou_memb <- map(103:114, voteview, chamber = 'H', type = 'members')
-hou_memb <- do.call(rbind, hou_memb)
-
-# ------------------------------------------------------------------------------
-# senate vote info & casts and member data
-# ------------------------------------------------------------------------------
-sen_info <- map(103:114, voteview, chamber = 'S', type = 'rollcalls')
-sen_info <- do.call(rbind, sen_info)
-
-sen_cast <- map(103:114, voteview, chamber = 'S', type = 'votes')
-sen_cast <- do.call(rbind, sen_cast)
-
-sen_memb <- map(103:114, voteview, chamber = 'S', type = 'members')
-sen_memb <- do.call(rbind, sen_memb)
+voteview_memb <- map(103:114, voteview, type = 'members')
+voteview_memb <- do.call(rbind, voteview_memb) %>% distinct()
 
 # ------------------------------------------------------------------------------
 # add to database
 # ------------------------------------------------------------------------------
 db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
 
-copy_to(db, hou_info, temporary = F)
-copy_to(db, hou_cast, temporary = F)
-copy_to(db, hou_memb, temporary = F)
-copy_to(db, sen_info, temporary = F)
-copy_to(db, sen_cast, temporary = F)
-copy_to(db, sen_memb, temporary = F)
+copy_to(db, voteview_info, temporary = F)
+copy_to(db, voteview_cast, temporary = F)
+copy_to(db, voteview_memb, temporary = F)
