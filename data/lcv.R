@@ -1,6 +1,6 @@
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # lcv scorecard votes
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 # lcv scorecards
 src <- read_html('http://scorecard.lcv.org/scorecard')
@@ -53,9 +53,9 @@ lcv_score$chamber <- c(rep("Senate", x - 1), rep("House", nrow(lcv_score) - x + 
 doubles <- grepl("2x Score", lcv_score$lcv_dscr)
 lcv_score <- mutate(lcv_score, double_count = replace(double_count, doubles, 1))
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # lcv recent votes
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 src <- read_html('http://scorecard.lcv.org/recent-votes')
 votes_nodes <- html_nodes(src, "a[href^='roll-call-vote']")
 class_nodes <- html_nodes(src, "span[class='voteIssues']")
@@ -91,9 +91,9 @@ lcv_recent$chamber <- c(rep("Senate", 12), rep("House", nrow(lcv_recent) - 12))
 doubles <- grepl("2x Score", lcv_recent$lcv_dscr)
 lcv_recent <- mutate(lcv_recent, double_count = replace(double_count, doubles, 1))
 
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # manual edits
-#-------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 # bind together
 lcv <- rbind(lcv_recent, lcv_score)
