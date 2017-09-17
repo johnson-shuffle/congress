@@ -5,11 +5,11 @@ voteview_fun <- function(congress, type = NULL) {
   
   stopifnot(!is.null(type))
   
-  url <- 'https://voteview.com/static/data/out/'
-  url1 <- str_c(url, type, '/', 'H', congress, '_', type, '.csv')
-  url2 <- str_c(url, type, '/', 'S', congress, '_', type, '.csv')
+  pag <- 'https://voteview.com/static/data/out/'
+  pag1 <- str_c(url, type, '/', 'H', congress, '_', type, '.csv')
+  pag2 <- str_c(url, type, '/', 'S', congress, '_', type, '.csv')
   
-  rbind(read_csv(url1, col_types = cols()), read_csv(url2, col_types = cols()))
+  rbind(read_csv(pag1, col_types = cols()), read_csv(pag2, col_types = cols()))
 
 }
 
