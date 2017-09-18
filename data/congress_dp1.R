@@ -1,48 +1,62 @@
+source('data/congress_meta.R')
 census_dir <- '~/GoogleDrive/Projects/congress/raw/census/'
 meta <- list.files(census_dir)[grepl('metadata', list.files(census_dir))]
 
 files <- meta[grepl('DP1|DP01', meta) & grepl('metadata', meta)]
-files <- str_c(census_dir, files)
+files <- map(str_c(census_dir, files), congress_meta)
 
-x <- map(files, meta_get)
+acs109 <- files[[1]]
+cen110 <- files[[2]]
+cen106 <- files[[3]]
+cen113 <- files[[4]]
+cen111 <- files[[5]] ; cen111 <- cen111[3:nrow(cen111), ]
 
-acs109 <- x[[1]]
-cen110 <- x[[2]]
-cen106 <- x[[3]]
-cen113 <- x[[4]]
-cen111 <- x[[5]] ; cen111 <- cen111[3:nrow(cen111), ]
-
-# fix 113th table (add universe to portion of data)
+# fix 113th table - add universe to portion of data, remove ';'
 cen113[199:210, 5:6] <- cen113[199:210, c(3,5)]
 cen113$universe[199:210] <- 'total population'
-cen113$desc[199:210] <- gsub(':', '', cen113$desc[199:210])
+cen113$group1[199:210] <- gsub(':', '', cen113$group1[199:210])
 cen113$id <- apply(select(cen113, -field, -id), 1, str_c, collapse = ' - ')
 
-# fix 110th table (category and universe switched for portion of data)
+# fix 110th table - switch category & universe
 x <- cen110$universe[101:192]
 y <- cen110$category[101:192]
 cen110$universe[101:192] <- y
 cen110$category[101:192] <- x
 cen110$id <- apply(select(cen110, -field, -id), 1, str_c, collapse = ' - ')
+rm(x, y)
 
-# fix 109th table (lots of problems)
+# fix 109th table - column shifts
 acs109[55:114, 5:7] <- acs109[55:114, 4:6]
 acs109[115:128, 5:6] <- acs109[115:128, c(3, 5)]
-acs109$category[129:160] <- acs109$universe[129:160]
+acs109[161:174, 4:7] <- acs109[161:174, 3:6]
+acs109[181:198, 6:7] <- acs109[181:198, 5:6]
+acs109[199:206, 4:5] <- acs109[199:206, 3:4]
+
+# fix 109th table - recode universe
+acs109$universe[115:174] <- 'total population'
+acs109$universe[175:206] <- 'total households'
+
+# fix 109th table - recode category
 acs109$category[55:128] <- 'race'
 acs109$category[59] <- ''
 acs109$category[60] <- ''
-acs109$universe[115:160] <- 'total population'
-acs109[161:174, 4:7] <- acs109[161:174, 3:6]
-acs109$universe[161:174] <- 'total population'
-acs109$desc[161:174] <- 'in households'
-acs109[181:198, 6:7] <- acs109[181:198, 5:6]
-acs109[199:206, 4:5] <- acs109[199:206, 3:4]
-acs109$desc[181:192] <- 'family households (families)'
-acs109$desc[193:198] <- 'nonfamily households'
-acs109$universe[175:206] <- 'total households'
+acs109$category[129:160] <- 'hispanic or latino and race'
 acs109$category[175:206] <- 'households by type'
+
+# fix 109th table - recode group1
+acs109$group1[161:174] <- 'in households'
+acs109$group1[181:192] <- 'family households (families)'
+acs109$group1[193:198] <- 'nonfamily households'
+
 acs109$id <- apply(select(acs109, -field, -id), 1, str_c, collapse = ' - ')
+
+# fix 106th table - switch category & universe
+x <- cen106$universe[101:192]
+y <- cen106$category[101:192]
+cen106$universe[101:192] <- y
+cen106$category[101:192] <- x
+cen106$id <- apply(select(cen106, -field, -id), 1, str_c, collapse = ' - ')
+rm(x, y)
 
 # start with 113th
 cw1 <- cen113 %>%
@@ -113,12 +127,11 @@ mis <- filter(cw4, is.na(field113))
 
 # manual matches (fill in field 110)
 cw4$field109[cw4$field110 == 'HC01_VC87_DP1'] <- 'EST_VC105_DP1'
-cw4 <- filter(cw4, field109 != 'EST_VC105_DP1' | !is.na(field113) | is.na(field110))
 
 # manual matches (fill in field 113)
 mat <- tribble(
   ~field113, ~field109,
-  #---|----
+  #---|---
   'HD01_S001_DP1', 'EST_VC01_DP1',  # total population
   'HD01_S026_DP1', 'EST_VC03_DP1',  # male population
   'HD01_S051_DP1', 'EST_VC04_DP1',  # female population
@@ -126,6 +139,9 @@ mat <- tribble(
   'HD01_S072_DP1', 'EST_VC25_DP1',  # female 18 and over
   'HD01_S050_DP1', 'EST_VC27_DP1',  # male 65 and over
   'HD01_S075_DP1', 'EST_VC28_DP1',  # female 65 and over
+  'HD01_S099_DP1', 'EST_VC56_DP1',  # two races: white & black
+  'HD01_S096_DP1', 'EST_VC57_DP1',  # two races: white & indian/native
+  'HD01_S097_DP1', 'EST_VC58_DP1',  # two races: white & asian
   'HD01_S107_DP1', 'EST_VC70_DP1',  # hispanic/latino
   'HD01_S108_DP1', 'EST_VC71_DP1',  # hispanic/latino - mexican
   'HD01_S109_DP1', 'EST_VC72_DP1',  # hispanic/latino - puerto rican
@@ -137,6 +153,17 @@ mat <- tribble(
   'HD01_S166_DP1', 'EST_VC107_DP1'   # households with people over 65 years
 )
 
-# recode and drop
+# recode and drops
 cw4$field109[cw4$field113 %in% mat$field113] <- mat$field109
-cw4 <- filter(cw4, !field109 %in% mat$field109 | !is.na(field113))
+cw4 <- cw4 %>%
+  filter(field109 != 'EST_VC105_DP1' | !is.na(field113) | !is.na(field110)) %>%
+  filter(!field109 %in% mat$field109 | !is.na(field113))
+
+# ------------------------------------------------------------------------------
+# compare with 106th
+# ------------------------------------------------------------------------------
+all.equal(cen110, cen106)
+
+cw5 <- cw4
+cw5$field106 <- cw5$field110
+cw5 <- cw5[c(1:4, 13, 5:12)]

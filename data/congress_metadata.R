@@ -73,22 +73,21 @@ rm(dat, tbl_cat, tbl_grp, tbl_uni)
 # ------------------------------------------------------------------------------
 # census extraction function
 # ------------------------------------------------------------------------------
-meta_get <- function(file, s = 3, m = 2) {
+meta_get <- function(file) {
   
   # identify table number
   tbl <- str_extract(file, 'DP\\d+')
   tbl <- gsub('0', '', tbl)
   
   # read data
-  dat <- read_csv(file, skip = s, col_names = c('field', 'desc')) %>%
+  dat <- read_csv(file, skip = 3, col_names = c('field', 'desc')) %>%
     mutate(
       field = str_c(field, tbl, sep = '_')
       )
-  dat$desc <- gsub('White;', 'White and', dat$desc)
   
   # parse out descriptives
-  txt <- str_split(dat$desc, ';', simplify = T)
-  txt <- cbind(txt[, 1], str_split(txt[, m], ' - ', simplify = T))
+  txt <- str_split(dat$desc, ';', n = 2, simplify = T)
+  txt <- cbind(txt[, 1], str_split(txt[, 2], ' - ', simplify = T))
   txt <- cbind(dat$field, txt)
   
   # convert to data frame
@@ -115,8 +114,8 @@ meta_get <- function(file, s = 3, m = 2) {
     'units',
     'universe',
     'category',
-    'desc',
-    str_c('group', 1:3)
+    'group1',
+    str_c('group', 2:4)
     )
   names(out) <- nam
   
