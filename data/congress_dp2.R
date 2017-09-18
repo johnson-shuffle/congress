@@ -2,20 +2,33 @@ source('data/congress_meta.R')
 census_dir <- '~/GoogleDrive/Projects/congress/raw/census/'
 meta <- list.files(census_dir)[grepl('metadata', list.files(census_dir))]
 
-files <- meta[grepl('DP1|DP01', meta) & grepl('metadata', meta)]
-files <- map(str_c(census_dir, files), congress_meta)
+files <- meta[grepl('DP2|DP02', meta) & grepl('metadata', meta)]
+csv <- map(str_c(census_dir, files), congress_meta)
 
-acs109 <- files[[1]]
-cen110 <- files[[2]]
-cen106 <- files[[3]]
-cen113 <- files[[4]]
-cen111 <- files[[5]] ; cen111 <- cen111[3:nrow(cen111), ]
+acs109_05 <- csv[[1]]
+acs109_06 <- csv[[2]]
+acs110_07 <- csv[[3]]
+acs110_08 <- csv[[4]]
+acs111_09 <- csv[[5]]
+acs111_10 <- csv[[6]]
+acs112_11 <- csv[[7]]
+acs113_12 <- csv[[8]]
+acs113_13 <- csv[[9]]
+acs114_14 <- csv[[10]]
+acs114_15 <- csv[[11]]
+cen110 <- csv[[12]]
+cen106 <- csv[[13]]
 
-# fix 113th table - add universe to portion of data, remove ';'
-cen113[199:210, 5:6] <- cen113[199:210, c(3,5)]
-cen113$universe[199:210] <- 'total population'
-cen113$group1[199:210] <- gsub(':', '', cen113$group1[199:210])
-cen113$id <- apply(select(cen113, -field, -id), 1, str_c, collapse = ' - ')
+# check tables for equality
+x <- acs111_10 %>%
+  filter(str_sub(field, 1, 4) == 'HC01') %>%
+  rename(field111_10 = field)
+y <- acs111_09 %>%
+  filter(str_sub(field, 1, 4) == 'HC01' & units == 'estimate') %>%
+  rename(field111_09 = field)
+z <- full_join(x, y)
+z <- z[c(1, 10, 2:9)]
+
 
 # fix 110th table - switch category & universe
 x <- cen110$universe[101:192]
