@@ -1,4 +1,11 @@
 # ------------------------------------------------------------------------------
+# preample
+# ------------------------------------------------------------------------------
+load_tidy()
+
+db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
+
+# ------------------------------------------------------------------------------
 # downloand and unzip
 # ------------------------------------------------------------------------------
 td <- tempdir()
@@ -29,16 +36,13 @@ unlink(td)
 # add fips (na's correspond to notes)
 naics <- dat1 %>%
   mutate(
-    fips = as.integer(str_sub(GeoFIPS, 1, 2))
+    fips = as.numeric(str_sub(GeoFIPS, 1, 2))
     ) %>%
   filter(!is.na(fips))
 
 # reshape to wide and convert year
 naics <- gather(naics, year, value, `1997`:`2016`) %>%
-  mutate(
-    value = as.numeric(value),
-    year  = as.integer(year)
-  )
+  mutate_at(vars(value, year), as.numeric)
 
 # ------------------------------------------------------------------------------
 # sic 1963 to 1996
@@ -47,17 +51,14 @@ naics <- gather(naics, year, value, `1997`:`2016`) %>%
 # add fips (na's correspond to notes)
 sic <- dat2 %>%
   mutate(
-    fips = as.integer(str_sub(GeoFIPS, 1, 2))
+    fips = as.numeric(str_sub(GeoFIPS, 1, 2))
   ) %>%
   filter(!is.na(fips)) %>%
   select(-`1997`)
 
 # reshape to wide and convert year
 sic <- gather(sic, year, value, `1963`:`1996`) %>%
-  mutate(
-    value = as.numeric(value),
-    year  = as.integer(year)
-  )
+  mutate_at(vars(value, year), as.numeric)
 
 # ------------------------------------------------------------------------------
 # gsi and population data
@@ -66,36 +67,50 @@ sic <- gather(sic, year, value, `1963`:`1996`) %>%
 # add fips (na's correspond to notes)
 gsi <- dat3 %>%
   mutate(
-    fips = as.integer(str_sub(GeoFIPS, 1, 2))
+    fips = as.numeric(str_sub(GeoFIPS, 1, 2))
   ) %>%
   filter(!is.na(fips))
 
-# reshape to wide, convert year, drop per capita income, and drop LineCode
+# reshape to wide and convert value & year 
 gsi <- gather(gsi, year, value, `1929`:`2016`) %>%
-  mutate(
-    value = as.numeric(value),
-    year  = as.integer(year)
-  )
-
-# ------------------------------------------------------------------------------
-# manual edits
-# ------------------------------------------------------------------------------
-
-# bind gsp together, add units as a reference
-bea_gsp <- rbind(sic, naics) %>%
-  mutate(
-    units = 'millions of current dollars'
-    )
+  mutate_at(vars(value, year), as.numeric)
 
 # split into gsi and population tables
 bea_gsi <- filter(gsi, LineCode == 1)
 bea_pop <- filter(gsi, LineCode == 2)
 
 # ------------------------------------------------------------------------------
+# tidy up
+# ------------------------------------------------------------------------------
+
+# bind gsp together
+bea_gsp <- rbind(sic, naics)
+
+# names
+names(bea_gsi) %<>% gsub(' ', '_', .) %>% tolower()
+names(bea_gsp) %<>% gsub(' ', '_', .) %>% tolower()
+names(bea_pop) %<>% gsub(' ', '_', .) %>% tolower()
+
+# add units
+bea_gsi %<>% mutate(
+  units = str_extract(description, "\\([^()]+\\)"),
+  units = str_replace(units, '\\(', ''),
+  units = str_replace(units, '\\)', ''),
+  description = 'Personal income'
+)
+bea_pop %<>% mutate(
+  units = str_extract(description, "\\([^()]+\\)"),
+  units = str_replace(units, '\\(', ''),
+  units = str_replace(units, '\\)', ''),
+  description = 'Population'
+)
+bea_gsp %<>% mutate(
+  units = 'millions of current dollars'
+)
+
+# ------------------------------------------------------------------------------
 # add to database
 # ------------------------------------------------------------------------------
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
-
 copy_to(db, bea_gsp, temporary = F, overwrite = T)
 copy_to(db, bea_gsi, temporary = F, overwrite = T)
 copy_to(db, bea_pop, temporary = F, overwrite = T)

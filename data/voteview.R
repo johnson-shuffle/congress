@@ -1,4 +1,11 @@
 # ------------------------------------------------------------------------------
+# preample
+# ------------------------------------------------------------------------------
+load_tidy()
+
+db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
+
+# ------------------------------------------------------------------------------
 # voteview function
 # ------------------------------------------------------------------------------
 voteview_fun <- function(congress, type = NULL) {
@@ -26,10 +33,17 @@ voteview_memb <- map(103:114, voteview_fun, type = 'members')
 voteview_memb <- do.call(rbind, voteview_memb) %>% distinct()
 
 # ------------------------------------------------------------------------------
+# tidy up
+# ------------------------------------------------------------------------------
+
+# convert integer to numeric
+voteview_info %<>% mutate_if(is.integer, as.numeric)
+voteview_cast %<>% mutate_if(is.integer, as.numeric)
+voteview_memb %<>% mutate_if(is.integer, as.numeric)
+
+# ------------------------------------------------------------------------------
 # add to database
 # ------------------------------------------------------------------------------
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
-
-copy_to(db, voteview_info, temporary = F)
-copy_to(db, voteview_cast, temporary = F)
-copy_to(db, voteview_memb, temporary = F)
+copy_to(db, voteview_info, temporary = F, overwrite = T)
+copy_to(db, voteview_cast, temporary = F, overwrite = T)
+copy_to(db, voteview_memb, temporary = F, overwrite = T)
