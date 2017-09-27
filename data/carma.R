@@ -1,7 +1,13 @@
 # ------------------------------------------------------------------------------
+# preample
+# ------------------------------------------------------------------------------
+load_tidy()
+
+db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
+
+# ------------------------------------------------------------------------------
 # create list of districts
 # ------------------------------------------------------------------------------
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
 
 # inputs
 in1 <- tbl(db, 'voteview_memb') %>% collect()
@@ -20,9 +26,12 @@ dis_111 <- in1 %>%
   select(-congress)
 all.equal(dis_108, dis_111)
 
-# add fips, pad fips and district_code
+# add fips, pad fips & district_code
 dis  <- dis_108 %>%
-  left_join(states, by = c('state_abbrev' = 'statecode')) %>%
+  left_join(
+    collect(tbl(db, 'states')),
+    by = c('state_abbrev' = 'statecode')
+    ) %>%
   mutate(
     fips = str_pad(fips, 2, 'left', '0'),
     district_code = str_pad(district_code, 2, 'left', '0')
@@ -46,8 +55,8 @@ carma_fun <- function(row, data = NULL, pb = NULL) {
   
   # extract carma table for given fips-district pair
   pag <- 'http://carma.org/region/detail/9999'
-  src <- read_html(str_c(pag, data$fips[row], data$district_code[row]))
-  dat <- html_table(src)
+  htm <- read_html(str_c(pag, data$fips[row], data$district_code[row]))
+  dat <- html_table(htm)
   dat <- dat[[2]]
   names(dat)[1] <- 'year'
 
@@ -61,28 +70,30 @@ carma_fun <- function(row, data = NULL, pb = NULL) {
   
 }
 pb <- progress_estimated(nrow(dis))
-carma_lst <- map(1:nrow(dis), carma_fun, data = dis, pb = pb)
+carma_list <- map(1:nrow(dis), carma_fun, data = dis, pb = pb)
 
 # ------------------------------------------------------------------------------
-# manual edits
+# tidy up
 # ------------------------------------------------------------------------------
 
 # bind togther
-carma <- do.call(rbind, carma_lst)
+carma <- do.call(rbind, carma_list)
 
 # change classes
 carma <- carma %>%
   filter(year != 'Future') %>%
   mutate_at(c(2:4), function(x) gsub(',', '', x)) %>%
-  mutate_at(c(1, 9, 10), as.integer) %>%
+  mutate_at(c(1, 9, 10), as.numeric) %>%
   mutate_if(is.character, as.numeric)
 
 # reshape
 carma <- gather(carma, variable, value, 2:8)
 
+# units
+carma$variable <- 'carbon dioxide'
+carma$units <- 'tons'
+
 # ------------------------------------------------------------------------------
 # add to database
 # ------------------------------------------------------------------------------
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
-
 copy_to(db, carma, temporary = F, overwrite = T)

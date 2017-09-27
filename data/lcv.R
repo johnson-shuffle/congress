@@ -1,11 +1,18 @@
 # ------------------------------------------------------------------------------
+# preample
+# ------------------------------------------------------------------------------
+load_tidy()
+
+db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
+
+# ------------------------------------------------------------------------------
 # lcv scorecard votes
 # ------------------------------------------------------------------------------
 
 # lcv scorecards
-src <- read_html('http://scorecard.lcv.org/scorecard')
-votes_nodes <- html_nodes(src, "a[href^='roll-call-vote']")
-class_nodes <- html_nodes(src, "span[class='voteIssuesFULL']")
+htm <- read_html('http://scorecard.lcv.org/scorecard')
+votes_nodes <- html_nodes(htm, "a[href^='roll-call-vote']")
+class_nodes <- html_nodes(htm, "span[class='voteIssuesFULL']")
 
 # create data frame
 lcv_score <- tibble(href = map_chr(votes_nodes, ~xml_attrs(.x)[['href']])) %>%
@@ -24,13 +31,14 @@ lcv_position <- function(href, pb = NULL) {
   
   if (!is.null(pb)) pb$tick()$print()
   
-  src <- read_html(href)
-  nds <- html_nodes(src, "div[id='roll-call-vote-pro-env-choice']")
+  htm <- read_html(href)
+  nds <- html_nodes(htm, "div[id='roll-call-vote-pro-env-choice']")
   pro <- xml_text(nds) %>% gsub('\n', '', .) %>% gsub('\t', '', .)
   
   if_else(pro == 'No', 0, 1)
   
 }
+
 pb <- progress_estimated(nrow(lcv))
 lcv_score$lcv_vote <- map_chr(lcv_score$href, lcv_position, pb = pb) # very slow
 lcv_score$lcv_vote <- as.numeric(lcv_score$lcv_vote)
@@ -47,18 +55,21 @@ lcv_score <- lcv_score %>%
 # find cutoff and add chamber
 x <- which(grep(2016, lcv_score$year) > lag(grep(2016, lcv_score$year)) + 1)
 x <- grep(2016, lcv_score$year)[x]
-lcv_score$chamber <- c(rep("Senate", x - 1), rep("House", nrow(lcv_score) - x + 1))
+lcv_score$chamber <- c(
+  rep("Senate", x - 1), 
+  rep("House", nrow(lcv_score) - x + 1)
+  )
 
 # double counts
 doubles <- grepl("2x Score", lcv_score$lcv_dscr)
-lcv_score <- mutate(lcv_score, double_count = replace(double_count, doubles, 1))
+lcv_score %<>% mutate(double_count = replace(double_count, doubles, 1))
 
 # ------------------------------------------------------------------------------
 # lcv recent votes
 # ------------------------------------------------------------------------------
-src <- read_html('http://scorecard.lcv.org/recent-votes')
-votes_nodes <- html_nodes(src, "a[href^='roll-call-vote']")
-class_nodes <- html_nodes(src, "span[class='voteIssues']")
+htm <- read_html('http://scorecard.lcv.org/recent-votes')
+votes_nodes <- html_nodes(htm, "a[href^='roll-call-vote']")
+class_nodes <- html_nodes(htm, "span[class='voteIssues']")
 
 # create data frame
 lcv_recent <- tibble(href = map_chr(votes_nodes, ~xml_attrs(.x)[['href']])) %>%
@@ -89,10 +100,10 @@ lcv_recent$chamber <- c(rep("Senate", 12), rep("House", nrow(lcv_recent) - 12))
 
 # double counts
 doubles <- grepl("2x Score", lcv_recent$lcv_dscr)
-lcv_recent <- mutate(lcv_recent, double_count = replace(double_count, doubles, 1))
+lcv_recent %<>% mutate(double_count = replace(double_count, doubles, 1))
 
 # ------------------------------------------------------------------------------
-# manual edits
+# tidy up
 # ------------------------------------------------------------------------------
 
 # bind together
@@ -116,12 +127,10 @@ congress <- tibble(
   )
 lcv <- left_join(lcv, congress)
 
-# convert numeric variables to integer
-lcv <- lcv %>% mutate_if(is.numeric, as.integer)
+# convert integer to numeric
+lcv <- mutate_if(is.integer, as.numeric)
 
 # ------------------------------------------------------------------------------
 # add to database
 # ------------------------------------------------------------------------------
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
-
 copy_to(db, lcv, temporary = F, overwrite = T)
