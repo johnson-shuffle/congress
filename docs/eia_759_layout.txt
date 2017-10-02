@@ -1,0 +1,230 @@
+
+FILE TITLE:  SEQUENTIAL MASTER FILE
+
+DATA SET NAME:  CN6944.PRJ.F759.MASTERYY
+                CN6944.PRJ.F759.BKUPYY                  (Backup)
+     *** NOTE:  where YY is the last 2 digits of the data's year.
+
+                       DCB Information:
+         RECFM    LRECL    BLKSIZE     DSORG   SIZE
+          FB       410       8200       PS      51 Tracks
+
+                         POSITION             TYPE
+      FIELD              FROM THRU   LENGTH   (A/N)  COMMENTS
+     -----------------  ---- ----   ------   -----  ------------------------------
+
+      Census Region
+      Code                  1    2      2        N   See below for values
+      FIPS State Code       3    4      2        N
+      Ownership Code        5    5      1        N   See below for values
+      Prime Mover Code      6    6      1        N   See below for values
+      Kind of Fuel Code     7    7      1        A   See below for values
+      Company Code          8   10      3        N   Code is unique within a
+                                                     state
+      Plant Code           11   13      3        N   Code is unique with a
+                                                     company
+      Company Name         14   38     25       AN   Name of operating
+                                                     company-not necessarily
+                                                     the owner; Left Justified
+      Plant Name           39   49     11       AN   Left Justified
+      Current Capacity     50   56      7        N   (kw) of most recent report
+                                                     or end of year value
+      Fuel Name            57   65      9        A   Left Justified
+      NAD Utility Id       66   70      5        A   Standard EIA Name & Address
+                                                     System Utility Id Number
+      Filler               71   71      1        A   Reserved unused space
+      Frequency            72   72      1        A   Respondent Reporting Frequency
+                                                     A or Blank: Annual, M: Monthly
+      Effective Date
+      Mo. Year.            73   76      4        N   Date of any capacity
+                                                     change
+      Status               77   77      1        A   R:Retired, S:Cold-Standby,
+                                                     A:Addition-New, ' ' = Active
+      Multistate Code      78   80      3       AN   Unique code for companies
+                                                     with plants in more than
+                                                     one state, otherwise blank
+                                                     'I' indicates industrial
+                                                     plants
+      Current Year         81   82      2        N   Year of Master File
+
+      Monthly Data         83  394               *   Group consisting of Gen-
+                                                     eration Consumption and
+                                                     Stocks, Repeats 12 times
+
+      Generation                       10       SN   Signed number (MWh)
+                                                     Monthly net generation
+                                                     defined as gross less use
+                                                     by power plant for auxiliary
+                                                     equipment, less pumping energy.
+                         POSITION             TYPE
+      FIELD              FROM THRU   LENGTH   (A/N)  COMMENTS
+     -----------------  ---- ----   ------   -----  ------------------------------
+
+      Consumption                       8        N   Fuel used to generate
+                                                     electrical energy
+                                                     including standby
+
+      Stocks                            8        N   Coal and Fuel Oil
+                                                     held at plant for
+                                                     energy generation
+      Electric Plant
+      Code                395  398      4        N   Unique for each plant
+      NERC Code           399  400      2        N
+      Company Number      401  405      5        N
+      Fuel Description    406  408      3       AN
+      Prime Mover
+      Description         409  410      2        A
+
+
+                           PERTINENT VALUES FOR FIELDS:
+
+                                PRIME MOVER
+         CLASS OF OWNERSHIP     DESCRIPTION   PRIME MOVER CODE
+         --------------------   -----------   ----------------
+         ' '  - Industrial          HY        1 - Hydro
+          1 - Privately Owned       ST        2 - Steam
+          5 - Municipal             IC        3 - Internal Combustion
+          7 - Federal               GT        4 - Gas Turbine
+          8 - Cooperative           CC        5 - Combined Cycle (Steam)
+          9 - Power Districts
+              State Projects        CT        6 - Combined Cycle (Gas Turbine)
+                                    WD        7 - Wood Turbine
+                                    SO        8 - Solar
+
+
+         KIND OF FUEL
+         DESCRIPTION               KIND OF FUEL CODE
+         ---------------------     -----------------
+             WAT                    ' '  Water
+             UR                      1   Nuclear
+             FO2                     2   Light Oil
+             FO6                     3   Heavy Oil
+             ANT                     4   Anthracite
+             PC                      5   Coke
+             BIT                     6   Bituminous
+             LIG                     7   Lignite
+             OIL                     8   Fuel Oil (Used prior to 1980)
+             NG                      9   Natural Gas
+             GEO                     A   Geothermal
+             WOD                     B   Wood
+             WAS                     C   Waste
+             WI                      D   Wind
+             SP                      E   Solar - Photovoltaic
+                 SO                      F   Solar - Thermal
+
+         COMPANY CODE:  3 digit code that is unique within state.
+
+         PLANT CODE:    3 digit code unique within Company.         COMPANY NAME:  Up to 25 character name of the operating company.
+
+         PLANT NAME:    Up to 11 character name of the plant.
+
+         CURRENT CAPACITY:  (kW) capacity as of most recent report or capacity
+                            as of end of year. For 1987 onward, this field
+                            is blank.
+
+         FUEL NAME:     9 character name of fuel.
+
+         STATUS:        R = Retired, S = Cold Standby, A = Addition (New Plant)
+
+         MULTISTATE CODE:  3 digit code unique for companies that have plants
+                           located in more than ONE(1) State. Also, industrial
+                           plants have an "I" in the first position (78).  If
+                           all plants of a utility are located in ONE(1) State
+                           this field will be BLANK.
+
+         CURRENT YEAR:     Year of the Master File.
+
+         GENERATION:       Monthly Net Generation* defined as Gross less
+                           use by the Power Plant for auxiliary equipment, less
+                           Pumping Energy.
+
+         CONSUMPTION:      Amount of Fuel used in generating electric energy
+                           including fuel used for maintenance of standby
+                           service. (short ton, 42 gal. bbl, Mcf.).
+
+         STOCKS:           Coal and Fuel Oil held for electric energy generation
+                           including regular stocks at plant and in cars or barges
+                           at plant site. (short ton, 42 gal. bbl).
+
+         ELECTRIC PLANT CODE:  4 Digit numeric code that is unique for each
+                               plant site.  This same code exists in other
+                               electric power files.
+
+         NERC CODE:        01  -  ECAR          08  -  SPP
+                           02  -  ERCOT         09  -  WSCC
+                           03  -  MAAC          10  -  ASCC
+                           04  -  MAIN          11  -  HICC
+                           05  -  MAPP
+                           06  -  NPCC
+                           07  -  SERC
+
+                 ECAR  =  East Central Area Reliability Corrdination Agreement
+                 ERCOT =  Electric Reliability Council of Texas
+                 MAAC  =  Mid-Atlantic Area Council
+                 MAIN  =  Mid-American Interpool Network
+                 MAPP  =  Mid-Continent Area Power Pool
+                 NPCC  =  Northeast Power Coordinating Council
+                 SERC  =  Southeastern Electric Reliability Council
+                 SPP   =  Southwest Power Pool
+                 WSCC  =  Western Systems Coordinating Council
+                 ASCC  =  Alaska Systems Coordinating Council
+                 HICC  =  Hawaii Coordinating Council
+
+
+         * Note: MWh  =  Megawatthours  ( Kilowatthours prior to 1990 )
+                       CENSUS    FIPS     POSTAL
+                       REGION    STATE    STATE
+                       CODE      CODE     CODE      STATE NAME
+
+                         63       01        AL      ALABAMA
+                         94       02        AK      ALASKA
+                         86       04        AZ      ARIZONA
+                         71       05        AR      ARKANSAS
+                         93       06        CA      CALIFORNIA
+                         84       08        CO      COLORADO
+                         16       09        CT      CONNECTICUT
+                         51       10        DE      DELAWARE
+                         53       11        DC      DISTRICT OF COLUMBIA
+                         59       12        FL      FLORIDA
+                         58       13        GA      GEORGIA
+                         95       15        HI      HAWAII
+                         82       16        ID      IDAHO
+                         33       17        IL      ILLINOIS
+                         32       18        IN      INDIANA
+                         42       19        IA      IOWA
+                         47       20        KS      KANSAS
+                         61       21        KY      KENTUCKY
+                         72       22        LA      LOUISIANA
+                         11       23        ME      MAINE
+                         52       24        MD      MARYLAND
+                         14       25        MA      MASSACHUSETTS
+                         34       26        MI      MICHIGAN
+                         41       27        MN      MINNESOTA
+                         64       28        MS      MISSISSIPPI
+                         43       29        MO      MISSOURI
+                         81       30        MT      MONTANA
+                         46       31        NE      NEBRASKA
+                         88       32        NV      NEVADA
+                         12       33        NH      NEW HAMPSHIRE
+                         22       34        NJ      NEW JERSEY
+                         85       35        NM      NEW MEXICO
+                         21       36        NY      NEW YORK
+                         56       37        NC      NORTH CAROLINA
+                         44       38        ND      NORTH DAKOTA
+                         31       39        OH      OHIO
+                         73       40        OK      OKLAHOMA
+                         92       41        OR      OREGON
+                         23       42        PA      PENNSYLVANIA
+                         15       44        RI      RHODE ISLAND
+                         57       45        SC      SOUTH CAROLINA
+                         45       46        SD      SOUTH DAKOTA
+                         62       47        TN      TENNESSEE
+                         74       48        TX      TEXAS
+                         87       49        UT      UTAH
+                         13       50        VT      VERMONT
+                         54       51        VA      VIRGINIA
+                         91       53        WA      WASHINGTON
+                         55       54        WV      WEST VIRGINIA
+                         35       55        WI      WISCONSIN
+                         83       56        WY      WYOMING
+

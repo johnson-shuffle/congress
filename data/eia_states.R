@@ -3,17 +3,18 @@
 # ------------------------------------------------------------------------------
 load_tidy()
 
+db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
+
 td <- tempdir()
 
 # ------------------------------------------------------------------------------
 # get state information
 # ------------------------------------------------------------------------------
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
 states <- tbl(db, sql("SELECT statecode, statedscr FROM states"))
 states <- collect(states)
   
 # ------------------------------------------------------------------------------
-# eia state electricity profiles - disposition
+# eia state electricity profiles (disposition) - 1990 to 2015
 #   https://www.eia.gov/electricity/state/
 # ------------------------------------------------------------------------------
 disp_fun <- function(state, pb = NULL, dir = NULL) {
@@ -38,7 +39,7 @@ disp_fun <- function(state, pb = NULL, dir = NULL) {
     )
   names(dat)[1] <- 'category'
   
-  # breaks (rows to keep)
+  # breaks
   b <- c(
     grep("Electric utilities", dat$category),
     grep("Combined heat and power, commercial", dat$category),
@@ -69,7 +70,7 @@ disp <- map(1:51, function(x) disp_fun(states[x, ], dir = td))
 eia_disp <- do.call(rbind, disp)
 
 # ------------------------------------------------------------------------------
-# eia state emissions profiles - sectors
+# eia state emissions profiles by sector - 1980 to 2014
 #   https://www.eia.gov/environment/emissions/state/
 # ------------------------------------------------------------------------------
 sect_fun <- function(state, pb = NULL, dir = NULL) {
@@ -80,7 +81,7 @@ sect_fun <- function(state, pb = NULL, dir = NULL) {
   
   # file extension
   ext <- str_c(state[2], '.xlsx') %>% tolower()
-  ext <- gsub(' ', '', ext)
+  ext <- gsub(' ', '%20', ext)
   
   # download
   pag <- 'https://www.eia.gov/environment/emissions/state/excel/'
@@ -117,7 +118,32 @@ sect <- map(1:51, function(x) sect_fun(states[x, ], dir = td))
 eia_sect <- do.call(rbind, sect)
 
 # ------------------------------------------------------------------------------
+# estimated state emissions from electricity - 1990 to 2015
+#   https://www.eia.gov/electricity/data/state/
+# ------------------------------------------------------------------------------
+download.file(
+  'https://www.eia.gov/electricity/data/state/emission_annual.xls',
+  destfile = str_c(td, '/tmp.xls')
+)
+dat <- read_excel(str_c(td, '/tmp.xls'))
+
+# reshape
+eia_emit <- gather(dat, type, value, -1:-4)
+
+# names
+names(eia_emit) %<>% gsub(' ', '_', .) %>% tolower()
+
+# units
+eia_emit %<>% mutate(
+  units = str_extract(type, '\\([^()]+\\)'),
+  units = str_replace(units, '\\(', ''),
+  units = str_replace(units, '\\)', ''),
+  type  = str_sub(type, 1, 3)
+)
+
+# ------------------------------------------------------------------------------
 # add to database
 # ------------------------------------------------------------------------------
 copy_to(db, eia_disp, temporary = F, overwrite = T)
 copy_to(db, eia_sect, temporary = F, overwrite = T)
+copy_to(db, eia_emit, temporary = F, overwrite = T)

@@ -127,7 +127,7 @@ congress <- tibble(
   )
 lcv <- left_join(lcv, congress)
 
-# convert integer to numeric
+# change classes
 lcv <- mutate_if(is.integer, as.numeric)
 
 # ------------------------------------------------------------------------------

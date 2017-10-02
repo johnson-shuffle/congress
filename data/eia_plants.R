@@ -32,7 +32,6 @@ f860_fun <- function(year, pb = NULL, dir = NULL) {
   # read
   dat <- read_excel(str_c(dir, fln, sep = '/'), skip = 1)
   dat %<>% mutate(year = year)
-  names(dat) %<>% tolower()
   return(dat)
 
 }
@@ -48,8 +47,15 @@ eia_f860 <- plyr::rbind.fill(eia_f860, f860_list[[1]])
 # names
 names(eia_f860) %<>% gsub(' ', '_', .) %>% tolower()
 
-# convert integer to numeric
+# change classes
 eia_f860 %<>% mutate_if(is.integer, as.numeric)
+
+# additions after 2012
+ads <- names(f860_list[[2]])[!names(f860_list[[2]]) %in% names(f860_list[[1]])]
+
+# test uniqueness
+dat <- eia_f860[!names(eia_f860) %in% c('year', ads)] %>% distinct()
+dup <- eia_f860$plant_code[duplicated(eia_f860$plant_code)]
 
 # ------------------------------------------------------------------------------
 # add to database
