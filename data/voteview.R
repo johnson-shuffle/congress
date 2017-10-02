@@ -36,7 +36,7 @@ voteview_memb <- do.call(rbind, voteview_memb) %>% distinct()
 # tidy up
 # ------------------------------------------------------------------------------
 
-# convert integer to numeric
+# change classes
 voteview_info %<>% mutate_if(is.integer, as.numeric)
 voteview_cast %<>% mutate_if(is.integer, as.numeric)
 voteview_memb %<>% mutate_if(is.integer, as.numeric)

@@ -9,38 +9,33 @@ db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
 # create list of districts
 # ------------------------------------------------------------------------------
 
-# inputs
-in1 <- tbl(db, 'voteview_memb') %>% collect()
-in2 <- tbl(db, 'states') %>% collect()
-
 # carma data is for 2004 & 2009 (check for differences in districts)
-dis_108 <- in1 %>%
-  filter(congress == 108 & chamber == 'House') %>%
-  select(congress, state_abbrev, district_code) %>%
-  distinct() %>%
-  select(-congress)
-dis_111 <- in1 %>%
-  filter(congress == 111 & chamber == 'House') %>%
-  select(congress, state_abbrev, district_code) %>%
-  distinct() %>%
-  select(-congress)
-all.equal(dis_108, dis_111)
+dis_108 <- tbl(db, sql(
+  "SELECT state_abbrev, district_code FROM (
+   SELECT DISTINCT congress, state_abbrev, district_code FROM voteview_memb
+   WHERE congress = 108 AND chamber = 'House')"
+  ))
+dis_111 <- tbl(db, sql(
+  "SELECT state_abbrev, district_code FROM (
+   SELECT DISTINCT congress, state_abbrev, district_code FROM voteview_memb
+   WHERE congress = 111 AND chamber = 'House')"
+))
+all.equal(collect(dis_108), collect(dis_111))
 
-# add fips, pad fips & district_code
-dis  <- dis_108 %>%
-  left_join(
-    collect(tbl(db, 'states')),
-    by = c('state_abbrev' = 'statecode')
-    ) %>%
+# add fips
+dis <- tbl(db, sql(
+  "SELECT state_abbrev, district_code, fips FROM (
+   SELECT DISTINCT congress, state_abbrev, district_code FROM voteview_memb
+   WHERE congress = 108 AND chamber = 'House') AS TBL_L
+   LEFT JOIN states ON TBL_L.state_abbrev = states.statecode"
+))
+
+# pad fips & district_code and correct for single district states
+singles <- c("AK", "DE", "MT", "ND", "SD", "VT", "WY")
+dis <- collect(dis) %>%
   mutate(
     fips = str_pad(fips, 2, 'left', '0'),
-    district_code = str_pad(district_code, 2, 'left', '0')
-    )
-
-# single district states
-singles <- c("AK", "DE", "MT", "ND", "SD", "VT", "WY")
-dis <- dis %>% 
-  mutate(
+    district_code = str_pad(district_code, 2, 'left', '0'),
     district_code = replace(district_code, state_abbrev %in% singles, '00')
   )
 

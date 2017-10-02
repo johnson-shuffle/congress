@@ -4,6 +4,8 @@
 load_tidy()
 library(sp)
 
+db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
+
 # ------------------------------------------------------------------------------
 # prism weather data
 # ------------------------------------------------------------------------------
