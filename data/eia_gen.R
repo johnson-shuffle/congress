@@ -20,7 +20,7 @@ f767_fun <- function(year, pb = NULL, dir = NULL) {
   
   # download
   pag <- 'https://www.eia.gov/electricity/data/eia767/zip/'
-  download.file(str_c(pag, ext), dest = str_c(dir, '/tmp.zip'))
+  download.file(str_c(pag, ext), destfile = str_c(dir, '/tmp.zip'))
   
   # filename
   fln <- unzip(str_c(dir, '/tmp.zip'), list = T) %>% arrange(desc(Length))
@@ -51,7 +51,7 @@ f906_fun <- function(year, pb = NULL, dir = NULL) {
   
   # download
   pag <- 'https://www.eia.gov/electricity/data/eia923/xls/utility/'
-  download.file(str_c(pag, 'f759', ext), dest = str_c(dir, '/tmp.xls'))
+  download.file(str_c(pag, 'f759', ext), destfile = str_c(dir, '/tmp.xls'))
   
   # read
   dat <- read_xls(str_c(dir, '/tmp.xls'))
@@ -89,7 +89,7 @@ nonu_fun <- function(year, pb = NULL, dir = NULL) {
   
   # download
   pag <- 'https://www.eia.gov/electricity/data/eia923/xls/'
-  download.file(str_c(pag, ext), dest = str_c(dir, '/tmp.zip'))
+  download.file(str_c(pag, ext), destfile = str_c(dir, '/tmp.zip'))
   
   # filename
   fln <- unzip(str_c(dir, '/tmp.zip'), list = T) %>% arrange(desc(Length))
@@ -133,7 +133,7 @@ f923_fun <- function(year, pb = NULL, dir = NULL) {
     
   # download
   pag <- 'https://www.eia.gov/electricity/data/eia923/xls/'
-  download.file(str_c(pag, ext), dest = str_c(dir, '/tmp.zip'))
+  download.file(str_c(pag, ext), destfile = str_c(dir, '/tmp.zip'))
   
   # filename
   fln <- unzip(str_c(dir, '/tmp.zip'), list = T) %>% arrange(desc(Length))

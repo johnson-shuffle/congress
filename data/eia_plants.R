@@ -20,7 +20,7 @@ f860_fun <- function(year, pb = NULL, dir = NULL) {
   
   # download
   pag <- 'http://www.eia.gov/electricity/data/eia860/xls/'
-  download.file(str_c(pag, ext), dest = str_c(dir, '/tmp.zip'))
+  download.file(str_c(pag, ext), destfile = str_c(dir, '/tmp.zip'))
   
   # filename
   fln <- unzip(str_c(dir, '/tmp.zip'), list = T)
