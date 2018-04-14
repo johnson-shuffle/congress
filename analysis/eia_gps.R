@@ -1,16 +1,11 @@
-# ------------------------------------------------------------------------------
-# preample
-# ------------------------------------------------------------------------------
+# ----- Preample ----------------------------------------------------------
+
 library(rgdal)
 library(rgeos)
-load_tidy()
 
-db <- src_sqlite("congress.sqlite", create = F)
-db_gis <- 'congress_gis.sqlite'
 
-# ------------------------------------------------------------------------------
-# load the data
-# ------------------------------------------------------------------------------
+# ----- Load the Data -----------------------------------------------------
+
 cdm <- readOGR(db_gis, 'cd103')
 
 f860 <- tbl(db, sql(
@@ -43,9 +38,9 @@ f860_sp <- f860 %>%
 coordinates(f860_sp) <- c('longitude', 'latitude')
 proj4string(f860_sp) <- proj4string(cdm)
 
-# ------------------------------------------------------------------------------
-# loop through maps and match with plants
-# ------------------------------------------------------------------------------
+
+# ----- Loop Through Maps and Match with Plants ---------------------------
+
 dat_list <- list()
 for (i in 103:114) {
   
@@ -72,15 +67,14 @@ dat <- do.call(rbind, dat_list)
 mis <- filter(dat, is.na(district_code))
 dat <- filter(dat, !is.na(district_code))
 
-# ------------------------------------------------------------------------------
-# guess missing districts using minimum distance
-# ------------------------------------------------------------------------------
 
-# project to utm-15n (compromise for calculating distrances)
+# ----- Guess Missing Districts via Minimum Distance ----------------------
+
+# project to utm-15n (compromise for calculating distances)
 f860_sp %<>% spTransform('+init=epsg:26915')
 
-pb <- progress_estimated(length(66:nrow(mis)))
-for (n in 66:nrow(mis)) {
+pb <- progress_estimated(length(1:nrow(mis)))
+for (n in 1:nrow(mis)) {
   
   # plant coordinates
   tmp1 <- f860_sp[f860_sp$plant_code == mis$plant_code[n], ]
@@ -104,12 +98,13 @@ for (n in 66:nrow(mis)) {
 
 dat <- rbind(dat, mis)
 
-# ------------------------------------------------------------------------------
+
+# ----- Tidy Up -----------------------------------------------------------
+
 # change classes
-# ------------------------------------------------------------------------------
 eia_gps <- dat %>% mutate_at(vars(fips, district_code, congress), as.numeric)
 
-# ------------------------------------------------------------------------------
-# add to database
-# ------------------------------------------------------------------------------
+
+# ----- Add to Database ----------------------------------------------------
+
 copy_to(db, eia_gps, temporary = F, overwrite = T)
