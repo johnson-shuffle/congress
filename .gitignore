@@ -1,8 +1,8 @@
-.Rproj.user
-.Rhistory
-.RData
-.Ruserdata
-.DS_Store
-congress.db
-opensecrets.db
+*.Rproj.user
+*.Rhistory
+*.RData
+*.Rda
+*.Ruserdata
+*.DS_Store
+*.sqlite
 /raw
