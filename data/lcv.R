@@ -1,13 +1,7 @@
-# ------------------------------------------------------------------------------
-# preample
-# ------------------------------------------------------------------------------
-load_tidy()
+# ----- Preample ----------------------------------------------------------
 
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
 
-# ------------------------------------------------------------------------------
-# lcv scorecard votes
-# ------------------------------------------------------------------------------
+# ----- LCV Scorecard Votes -----------------------------------------------
 
 # lcv scorecards
 htm <- read_html('http://scorecard.lcv.org/scorecard')
@@ -64,9 +58,9 @@ lcv_score$chamber <- c(
 doubles <- grepl("2x Score", lcv_score$lcv_dscr)
 lcv_score %<>% mutate(double_count = replace(double_count, doubles, 1))
 
-# ------------------------------------------------------------------------------
-# lcv recent votes
-# ------------------------------------------------------------------------------
+
+# ----- LCV Recent Votes --------------------------------------------------
+
 htm <- read_html('http://scorecard.lcv.org/recent-votes')
 votes_nodes <- html_nodes(htm, "a[href^='roll-call-vote']")
 class_nodes <- html_nodes(htm, "span[class='voteIssues']")
@@ -102,9 +96,8 @@ lcv_recent$chamber <- c(rep("Senate", 12), rep("House", nrow(lcv_recent) - 12))
 doubles <- grepl("2x Score", lcv_recent$lcv_dscr)
 lcv_recent %<>% mutate(double_count = replace(double_count, doubles, 1))
 
-# ------------------------------------------------------------------------------
-# tidy up
-# ------------------------------------------------------------------------------
+
+# ----- Tidy Up -----------------------------------------------------------
 
 # bind together
 lcv <- rbind(lcv_recent, lcv_score)
@@ -130,7 +123,7 @@ lcv <- left_join(lcv, congress)
 # change classes
 lcv <- mutate_if(is.integer, as.numeric)
 
-# ------------------------------------------------------------------------------
-# add to database
-# ------------------------------------------------------------------------------
+
+# ----- Add to Database ---------------------------------------------------
+
 copy_to(db, lcv, temporary = F, overwrite = T)

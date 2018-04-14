@@ -1,13 +1,7 @@
-# ------------------------------------------------------------------------------
-# preample
-# ------------------------------------------------------------------------------
-load_tidy()
+# ----- Preample ----------------------------------------------------------
 
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
 
-# ------------------------------------------------------------------------------
-# create list of districts
-# ------------------------------------------------------------------------------
+# ----- Create List of Districts ------------------------------------------
 
 # carma data is for 2004 & 2009 (check for differences in districts)
 dis_108 <- tbl(db, sql(
@@ -39,9 +33,9 @@ dis <- collect(dis) %>%
     district_code = replace(district_code, state_abbrev %in% singles, '00')
   )
 
-#-------------------------------------------------------------------------------
-# district emissions from carma.org
-#-------------------------------------------------------------------------------
+
+# ----- District Emissions ------------------------------------------------
+
 carma_fun <- function(row, data = NULL, pb = NULL) {
   
   stopifnot(!is.null(data))
@@ -67,9 +61,8 @@ carma_fun <- function(row, data = NULL, pb = NULL) {
 pb <- progress_estimated(nrow(dis))
 carma_list <- map(1:nrow(dis), carma_fun, data = dis, pb = pb)
 
-# ------------------------------------------------------------------------------
-# tidy up
-# ------------------------------------------------------------------------------
+
+# ----- Tidy Up -----------------------------------------------------------
 
 # bind togther
 carma <- do.call(rbind, carma_list)
@@ -88,7 +81,7 @@ carma <- gather(carma, variable, value, 2:8)
 carma$variable <- 'carbon dioxide'
 carma$units <- 'tons'
 
-# ------------------------------------------------------------------------------
-# add to database
-# ------------------------------------------------------------------------------
+
+# ----- Add to Database --------------------------------------------------
+
 copy_to(db, carma, temporary = F, overwrite = T)

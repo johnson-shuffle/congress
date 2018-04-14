@@ -5,7 +5,7 @@
 # ------------------------------------------------------------------------------
 
 # database
-db=~/GoogleDrive/Projects/congress/congress.db
+db=~/Projects/congress/opensecrets.sqlite
 
 # zip files
 cd ~/Desktop/opensecrets/
@@ -16,7 +16,7 @@ cd ~/Desktop/opensecrets/
 
 # candidates
 echo -e "CREATE TABLE cands (
-    cycle TEXT,
+    cycle INTEGER,
     fecid TEXT,
     osid TEXT,
     firstlast TEXT,
@@ -27,16 +27,17 @@ echo -e "CREATE TABLE cands (
     cand_cyc TEXT,
     incumb TEXT,
     recipcode TEXT,
-    nopacs TEXT
+    nopacs TEXT,
+    PRIMARY KEY(cycle, fecid, osid)
 );\n.exit" | sqlite3 $db
 
 # pacs to candidates
 echo -e "CREATE TABLE pacs (
-    cycle TEXT,
+    cycle INTEGER,
     fecrecno TEXT,
     pacid TEXT,
     osid TEXT,
-    amount TEXT,
+    amount REAL,
     date TEXT,
     realcode TEXT,
     type TEXT,
@@ -46,18 +47,18 @@ echo -e "CREATE TABLE pacs (
 
 # pac to pac
 echo -e "CREATE TABLE pac_other (
-    cycle TEXT,
+    cycle INTEGER,
     fecrecno TEXT,
     filerid TEXT,
     donorcmte TEXT,
     contriblendtrans TEXT,
     city TEXT,
     state TEXT,
-    zipcode TEXT,
+    zipcode INTEGER,
     fec_occ_emp TEXT,
     primcode TEXT,
     date TEXT,
-    amount TEXT,
+    amount REAL,
     recipid TEXT,
     party TEXT,
     otherid TEXT,
@@ -73,8 +74,9 @@ echo -e "CREATE TABLE pac_other (
 );\n.exit" | sqlite3 $db
 
 # individuals
-echo -e "CREATE TABLE indivs (
-    cycle TEXT,
+echo -e "DROP TABLE IF EXISTS indivs;
+    CREATE TABLE indivs (
+    cycle INTEGER,
     fecrecno TEXT,
     contribid TEXT,
     contrib TEXT,
@@ -83,11 +85,11 @@ echo -e "CREATE TABLE indivs (
     ultorg TEXT,
     realcode TEXT,
     date TEXT,
-    amount TEXT,
+    amount REAL,
     street TEXT,
     city TEXT,
     state TEXT,
-    zip TEXT,
+    zip INTEGER,
     recipcode TEXT,
     type TEXT,
     cmteid TEXT,
@@ -101,7 +103,7 @@ echo -e "CREATE TABLE indivs (
 
 # committees
 echo -e "CREATE TABLE cmtes (
-    cycle TEXT,
+    cycle INTEGER,
     cmteid TEXT,
     pacshort TEXT,
     affiliate TEXT,
@@ -123,9 +125,7 @@ echo -e "CREATE TABLE cmtes (
 # ------------------------------------------------------------------------------
 
 # array of years
-y1=($(seq 90 2 98))
-y2=($(seq -f "%02g" 0 2 16))
-y=(${y1[@]} ${y2[@]})
+y=($(seq 90 2 98) $(seq -f "%02g" 0 2 16))
 
 # array of tables
 t=("cands" "cmtes" "indivs" "pacs" "pac_other")
@@ -138,12 +138,14 @@ for i in ${y[@]}; do
         z="CampaignFin"$i
         unzip $z $f
 
-        # change quote character to " (double quote "s in the data first)
-        LANG=C sed -i '.bak' 's/"/""/g' $f
-        LANG=C sed -i '.bak' 's/|/"/g' $f
+        # clear out any trailing whitespace
+        LANG=C sed -i.bak -E 's/ +\|/\|/g' $f
+        LANG=C sed -i.bak -E 's/\| +/\|/g' $f
+        LANG=C sed -i.bak -E 's/ +\,/\,/g' $f
 
-        # clear out any whitespace
-        LANG=C sed -E -i '.bak' 's/ +//g' $f
+        # change quote character to " (double quote "s in the data first)
+        LANG=C sed -i.bak 's/"/""/g' $f
+        LANG=C sed -i.bak 's/|/"/g' $f
 
         # add to sqlite db
         echo -e ".mode csv\n.import" $f $j | sqlite3 $db
