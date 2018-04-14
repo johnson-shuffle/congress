@@ -1,16 +1,10 @@
-# ------------------------------------------------------------------------------
-# preample
-# ------------------------------------------------------------------------------
-load_tidy()
-
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
+# ----- Preample ----------------------------------------------------------
 
 td <- tempdir()
 
-# ------------------------------------------------------------------------------
-# eia form 767 data
-#   https://www.eia.gov/electricity/data/eia767/
-# ------------------------------------------------------------------------------
+
+# ----- EIA Form 767 ------------------------------------------------------
+
 f767_fun <- function(year, pb = NULL, dir = NULL) {
   
   if (!is.null(pb)) pb$tick()$print()
@@ -38,10 +32,9 @@ f767_fun <- function(year, pb = NULL, dir = NULL) {
 
 f767_list <- map(1985:2005, f767_fun, dir = td)
 
-# ------------------------------------------------------------------------------
-# eia form 906 data
-#   https://www.eia.gov/electricity/data/eia923/eia906u.html
-# ------------------------------------------------------------------------------
+
+# ----- EIA Form 906 ------------------------------------------------------
+
 f906_fun <- function(year, pb = NULL, dir = NULL) {
   
   if (!is.null(pb)) pb$tick()$print()
@@ -74,10 +67,9 @@ f906_fun <- function(year, pb = NULL, dir = NULL) {
 
 f906_list <- map(1970:2000, f906_fun, dir = td)
 
-# ------------------------------------------------------------------------------
-# eia form 867/906 data (non-utility)
-#   https://www.eia.gov/electricity/data/eia923/eia906u.html
-# ------------------------------------------------------------------------------
+
+# ----- EIA Form 867/906 (non-utility) ------------------------------------
+
 nonu_fun <- function(year, pb = NULL, dir = NULL) {
   
   stopifnot(year == 1989 | (year >= 1999 & year <= 2000))
@@ -113,10 +105,9 @@ nonu_fun <- function(year, pb = NULL, dir = NULL) {
 
 f906n_list <- map(1999:2000, nonu_fun, dir = td)
 
-# ------------------------------------------------------------------------------
-# eia form 920/923 data
-#   https://www.eia.gov/electricity/data/eia923/
-# ------------------------------------------------------------------------------
+
+# ----- EIA Form 920/923 --------------------------------------------------
+
 f923_fun <- function(year, pb = NULL, dir = NULL) {
   
   stopifnot(year >= 2001, year <= 2016)
@@ -162,9 +153,8 @@ f923a_list <- map(2001:2007, f923_fun, dir = td)
 # eia form 923 data
 f923b_list <- map(2008:2016, f923_fun, dir = td)
 
-# ------------------------------------------------------------------------------
-# tidy up
-# ------------------------------------------------------------------------------
+
+# ----- Tidy Up -----------------------------------------------------------
 
 # f767 - add year to 1985-2000 and bind
 f767_list[1:16] <- map(1:16, ~mutate(f767_list[[.x]], YEAR = c(1985:2005)[.x]))
@@ -196,9 +186,9 @@ f923b_list_n <- map(f923b_list, ~setNames(.x, names(f923b_list[[1]])))
 eia_f923b <- do.call(rbind, f923b_list_n)
 
 # names
-names(eia_f767) %<>% gsub(' ', '_', .) %>% tolower()
-names(eia_f867) %<>% gsub(' ', '_', .) %>% tolower()
-names(eia_f906) %<>% gsub(' ', '_', .) %>% tolower()
+names(eia_f767)  %<>% gsub(' ', '_', .) %>% tolower()
+names(eia_f867)  %<>% gsub(' ', '_', .) %>% tolower()
+names(eia_f906)  %<>% gsub(' ', '_', .) %>% tolower()
 names(eia_f906n) %<>% gsub(' ', '_', .) %>% tolower()
 names(eia_f923a) %<>% gsub(' ', '_', .) %>% tolower()
 names(eia_f923b) %<>% gsub(' ', '_', .) %>% tolower()
@@ -209,12 +199,12 @@ i1 <- match('quantity_jan', names(eia_f923b))
 i2 <- match('netgen_dec', names(eia_f923b))
 eia_f923b %<>% mutate_at(i1:i2, as.numeric)
 
-# ------------------------------------------------------------------------------
-# add to database
-# ------------------------------------------------------------------------------
-copy_to(db, eia_f767, temporary = F, overwrite = T)
-copy_to(db, eia_f867, temporary = F, overwrite = T)
-copy_to(db, eia_f906, temporary = F, overwrite = T)
+
+# ----- Add to Database ---------------------------------------------------
+
+copy_to(db, eia_f767,  temporary = F, overwrite = T)
+copy_to(db, eia_f867,  temporary = F, overwrite = T)
+copy_to(db, eia_f906,  temporary = F, overwrite = T)
 copy_to(db, eia_f906n, temporary = F, overwrite = T)
 copy_to(db, eia_f923a, temporary = F, overwrite = T)
 copy_to(db, eia_f923b, temporary = F, overwrite = T)

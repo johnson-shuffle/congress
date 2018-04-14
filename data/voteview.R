@@ -1,13 +1,8 @@
-# ------------------------------------------------------------------------------
-# preample
-# ------------------------------------------------------------------------------
-load_tidy()
+# ----- Preample ----------------------------------------------------------
 
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
 
-# ------------------------------------------------------------------------------
-# voteview function
-# ------------------------------------------------------------------------------
+# ----- Voteview Function -------------------------------------------------
+
 voteview_fun <- function(congress, type = NULL) {
   
   stopifnot(!is.null(type))
@@ -20,9 +15,9 @@ voteview_fun <- function(congress, type = NULL) {
 
 }
 
-# ------------------------------------------------------------------------------
-# house vote info & casts, and member data
-# ------------------------------------------------------------------------------
+
+# ----- Vote Info, Votes Cast, and Member Info ----------------------------
+
 voteview_info <- map(103:114, voteview_fun, type = 'rollcalls')
 voteview_info <- do.call(rbind, voteview_info) 
 
@@ -32,18 +27,17 @@ voteview_cast <- do.call(rbind, voteview_cast)
 voteview_memb <- map(103:114, voteview_fun, type = 'members')
 voteview_memb <- do.call(rbind, voteview_memb) %>% distinct()
 
-# ------------------------------------------------------------------------------
-# tidy up
-# ------------------------------------------------------------------------------
+
+# ----- Tidy Up -----------------------------------------------------------
 
 # change classes
 voteview_info %<>% mutate_if(is.integer, as.numeric)
 voteview_cast %<>% mutate_if(is.integer, as.numeric)
 voteview_memb %<>% mutate_if(is.integer, as.numeric)
 
-# ------------------------------------------------------------------------------
-# add to database
-# ------------------------------------------------------------------------------
+
+# ----- Add to Database ---------------------------------------------------
+
 copy_to(db, voteview_info, temporary = F, overwrite = T)
 copy_to(db, voteview_cast, temporary = F, overwrite = T)
 copy_to(db, voteview_memb, temporary = F, overwrite = T)

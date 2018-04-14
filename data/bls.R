@@ -1,13 +1,8 @@
-# ------------------------------------------------------------------------------
-# preample
-# ------------------------------------------------------------------------------
-load_tidy()
+# ----- Preample ----------------------------------------------------------
 
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
 
-#-------------------------------------------------------------------------------
-# unemployment
-#-------------------------------------------------------------------------------
+# ----- Unemployment ------------------------------------------------------
+
 dat <- read_delim(
   'http://download.bls.gov/pub/time.series/la/la.data.1.CurrentS',
   delim = '\t',
@@ -27,9 +22,9 @@ bls_unempl <- bls_unempl %>%
   mutate(year = as.numeric(year)) %>%
   ungroup()
 
-#-------------------------------------------------------------------------------
-# inflation data
-#-------------------------------------------------------------------------------
+
+# ----- Inflation --------------------------------------------------------
+
 dat <- read_delim(
   'http://download.bls.gov/pub/time.series/cu/cu.data.2.Summaries',
   delim = '\t',
@@ -43,9 +38,9 @@ bls_cpi <- dat %>%
   summarise(avg_cpi = mean(value)) %>%
   mutate(year = as.numeric(year)) %>%
   ungroup()
-  
-# ------------------------------------------------------------------------------
-# add to database
-# ------------------------------------------------------------------------------
+ 
+ 
+# ----- Add to Database ---------------------------------------------------
+
 copy_to(db, bls_unempl, temporary = F, overwrite = T)
 copy_to(db, bls_cpi, temporary = F, overwrite = T)

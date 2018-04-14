@@ -1,22 +1,16 @@
-# ------------------------------------------------------------------------------
-# preample
-# ------------------------------------------------------------------------------
-load_tidy()
-
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
+# ----- Preample ----------------------------------------------------------
 
 td <- tempdir()
 
-# ------------------------------------------------------------------------------
-# get state information
-# ------------------------------------------------------------------------------
+
+# ----- State Information -------------------------------------------------
+
 states <- tbl(db, sql("SELECT statecode, statedscr FROM states"))
 states <- collect(states)
   
-# ------------------------------------------------------------------------------
-# eia state electricity profiles (disposition) - 1990 to 2015
-#   https://www.eia.gov/electricity/state/
-# ------------------------------------------------------------------------------
+
+# ----- EIA State Electricity Profiles (disposition) 1990 to 2015 ---------
+
 disp_fun <- function(state, pb = NULL, dir = NULL) {
   
   if (!is.null(pb)) pb$tick()$print()
@@ -69,10 +63,9 @@ disp_fun <- function(state, pb = NULL, dir = NULL) {
 disp <- map(1:51, function(x) disp_fun(states[x, ], dir = td))
 eia_disp <- do.call(rbind, disp)
 
-# ------------------------------------------------------------------------------
-# eia state emissions profiles by sector - 1980 to 2014
-#   https://www.eia.gov/environment/emissions/state/
-# ------------------------------------------------------------------------------
+
+# ----- EIA State Emissions Profiles by Sector 1980 to 2014 ---------------
+
 sect_fun <- function(state, pb = NULL, dir = NULL) {
   
   if (!is.null(pb)) pb$tick()$print()
@@ -117,10 +110,9 @@ sect_fun <- function(state, pb = NULL, dir = NULL) {
 sect <- map(1:51, function(x) sect_fun(states[x, ], dir = td))
 eia_sect <- do.call(rbind, sect)
 
-# ------------------------------------------------------------------------------
-# estimated state emissions from electricity - 1990 to 2015
-#   https://www.eia.gov/electricity/data/state/
-# ------------------------------------------------------------------------------
+
+# ----- EIA State Emissions from Electricity 1990 to 2015 -----------------
+
 download.file(
   'https://www.eia.gov/electricity/data/state/emission_annual.xls',
   destfile = str_c(td, '/tmp.xls')
@@ -141,9 +133,9 @@ eia_emit %<>% mutate(
   type  = str_sub(type, 1, 3)
 )
 
-# ------------------------------------------------------------------------------
-# add to database
-# ------------------------------------------------------------------------------
+
+# ----- Add to Database ---------------------------------------------------
+
 copy_to(db, eia_disp, temporary = F, overwrite = T)
 copy_to(db, eia_sect, temporary = F, overwrite = T)
 copy_to(db, eia_emit, temporary = F, overwrite = T)

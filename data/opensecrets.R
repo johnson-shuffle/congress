@@ -1,15 +1,10 @@
-# ------------------------------------------------------------------------------
-# preample
-# ------------------------------------------------------------------------------
-load_tidy()
+# ----- Preample ----------------------------------------------------------
 
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
+
+# ----- Data Dictionary ---------------------------------------------------
 
 td <- '~/Desktop/opensecrets/'
 
-# ------------------------------------------------------------------------------
-# data dictionary
-# ------------------------------------------------------------------------------
 pag <- 'https://www.opensecrets.org/resources/datadictionary/'
 dic_links <- list(
   pacs = 'Data%20Dictionary%20for%20PAC%20to%20Cands%20Data.htm',
@@ -30,4 +25,4 @@ dic$cands %<>%
   select(-`Type (Length)`)
 
 dic %<>% do.call(rbind, .)
-dic$table <- str_split(row.names(dic), '\\.', simplify = T)[, 1]
+dic$Table <- str_split(row.names(dic), '\\.', simplify = T)[, 1]

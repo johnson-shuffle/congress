@@ -1,13 +1,8 @@
-# ------------------------------------------------------------------------------
-# preample
-# ------------------------------------------------------------------------------
-load_tidy()
+# ----- Preample ----------------------------------------------------------
 
-db <- src_sqlite("~/GoogleDrive/Projects/congress/congress.db", create = F)
 
-# ------------------------------------------------------------------------------
-# downloand and unzip
-# ------------------------------------------------------------------------------
+# ----- Download and Unzip ------------------------------------------------
+
 td <- tempdir()
 
 pag <- 'https://www.bea.gov/regional/zip/'
@@ -29,9 +24,8 @@ dat3 <- read_csv(str_c(td, '/SA1_1929_2016.csv'))
 
 unlink(td)
 
-# ------------------------------------------------------------------------------
-# naics 1997 to 2016
-# ------------------------------------------------------------------------------
+
+# ----- NAICS 1997 to 2016 ------------------------------------------------
 
 # add fips (na's correspond to notes)
 naics <- dat1 %>%
@@ -44,10 +38,6 @@ naics <- dat1 %>%
 naics <- gather(naics, year, value, `1997`:`2016`) %>%
   mutate_at(vars(value, year), as.numeric)
 
-# ------------------------------------------------------------------------------
-# sic 1963 to 1996
-# ------------------------------------------------------------------------------
-
 # add fips (na's correspond to notes)
 sic <- dat2 %>%
   mutate(
@@ -56,13 +46,12 @@ sic <- dat2 %>%
   filter(!is.na(fips)) %>%
   select(-`1997`)
 
+
+# ----- SIC 1963 to 1996 --------------------------------------------------
+
 # reshape to wide and convert year
 sic <- gather(sic, year, value, `1963`:`1996`) %>%
   mutate_at(vars(value, year), as.numeric)
-
-# ------------------------------------------------------------------------------
-# gsi and population data
-# ------------------------------------------------------------------------------
 
 # add fips (na's correspond to notes)
 gsi <- dat3 %>%
@@ -70,6 +59,9 @@ gsi <- dat3 %>%
     fips = as.numeric(str_sub(GeoFIPS, 1, 2))
   ) %>%
   filter(!is.na(fips))
+
+
+# ----- GSI and Population -----------------------------------------------
 
 # reshape to wide and convert value & year 
 gsi <- gather(gsi, year, value, `1929`:`2016`) %>%
@@ -79,10 +71,9 @@ gsi <- gather(gsi, year, value, `1929`:`2016`) %>%
 bea_gsi <- filter(gsi, LineCode == 1)
 bea_pop <- filter(gsi, LineCode == 2)
 
-# ------------------------------------------------------------------------------
-# tidy up
-# ------------------------------------------------------------------------------
 
+# ----- Tidy Up ----------------------------------------------------------
+ 
 # bind gsp together
 bea_gsp <- rbind(sic, naics)
 
@@ -108,9 +99,9 @@ bea_gsp %<>% mutate(
   units = 'millions of current dollars'
 )
 
-# ------------------------------------------------------------------------------
-# add to database
-# ------------------------------------------------------------------------------
+
+# ----- Add to Database --------------------------------------------------
+
 copy_to(db, bea_gsp, temporary = F, overwrite = T)
 copy_to(db, bea_gsi, temporary = F, overwrite = T)
 copy_to(db, bea_pop, temporary = F, overwrite = T)
