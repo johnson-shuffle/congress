@@ -11,10 +11,9 @@ cdm <- readOGR(db_gis, 'cd103')
 f860 <- tbl(db, sql(
   "SELECT DISTINCT 
    plant_code, street_address, city, zip, state, latitude, longitude, year
-   FROM eia_f860"
+   FROM eia_f860
+   WHERE state NOT IN ('DC') AND longitude IS NOT NULL"
   )) %>%
-  filter(!is.na(longitude)) %>%
-  filter(state != 'DC') %>%
   collect()
 
 f860_2015 <- filter(f860, year == 2015)$plant_code

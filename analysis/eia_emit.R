@@ -10,7 +10,7 @@ con1 <- tbl(db, 'eia_f867') %>%
     facility_code,
     fuel_code_standardized_to_2002_codes,
     `fuel_consumption_for_electric_power_generation(mmbtu)`
-  ) %>%
+    ) %>%
   group_by(year, facility_code, fuel_code_standardized_to_2002_codes) %>%
   summarise(
     con = sum(`fuel_consumption_for_electric_power_generation(mmbtu)`)
@@ -21,22 +21,36 @@ names(con1) <- c('year', 'plant_id', 'esource', 'con')
 
 # non utility data 1999 and 2000
 con2 <- tbl(db, 'eia_f906n') %>%
-  select(year, facilityid, fueltype, con) %>%
+  select(
+    year,
+    facilityid,
+    fueltype,
+    con
+    ) %>%
   group_by(year, facilityid, fueltype) %>%
   filter(!is.na(fueltype)) %>%
   group_by(year, facilityid, fueltype) %>%
-  summarise(con = sum(con)) %>%
+  summarise(
+    con = sum(con)
+    ) %>%
   ungroup() %>%
   collect()
 names(con2) <- c('year', 'plant_id', 'esource', 'con')
 
 # utility data 1970 to 2000
 con3 <- tbl(db, 'eia_f906') %>%
-  select(year, pcode, fueltyp, con) %>%
+  select(
+    year,
+    pcode,
+    fueltyp,
+    con
+    ) %>%
   group_by(year, pcode, fueltyp) %>%
   filter(!is.na(fueltyp)) %>%
   group_by(year, pcode, fueltyp) %>%
-  summarise(con = sum(con)) %>%
+  summarise(
+    con = sum(con)
+    ) %>%
   ungroup() %>%
   collect()
 names(con3) <- c('year', 'plant_id', 'esource', 'con')
@@ -51,7 +65,9 @@ con4 <- tbl(db, 'eia_f923a') %>%
     ) %>%
   filter(!is.na(reported_fuel_type_code)) %>%
   group_by(year, plant_id, reported_fuel_type_code) %>%
-  summarise(con = sum(elec_fuel_consumption_mmbtus)) %>%
+  summarise(
+    con = sum(elec_fuel_consumption_mmbtus)
+    ) %>%
   ungroup() %>% 
   collect()
 names(con4) <- c('year', 'plant_id', 'esource', 'con')
@@ -63,10 +79,12 @@ con5 <- tbl(db, 'eia_f923b') %>%
     plant_id,
     reported_fuel_type_code, 
     elec_fuel_consumption_mmbtus
-  ) %>%
+    ) %>%
   filter(!is.na(reported_fuel_type_code)) %>%
   group_by(year, plant_id, reported_fuel_type_code) %>%
-  summarise(con = sum(elec_fuel_consumption_mmbtus)) %>%
+  summarise(
+    con = sum(elec_fuel_consumption_mmbtus)
+    ) %>%
   ungroup() %>%
   collect()
 names(con5) <- c('year', 'plant_id', 'esource', 'con')

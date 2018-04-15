@@ -2,7 +2,8 @@
 
 # helper function for reading cq csv files
 cq_fun <- function(file, office = NULL) {
-  dat <- read_csv(file, skip = 2) %>% filter(Office == office)
+  dat <- read_csv(file, skip = 2) %>% 
+    filter(Office == office)
   if (office == 'Senate') {
     dat$raceYear <- as.numeric(str_extract(file, '\\d{4}'))
   }
@@ -12,8 +13,8 @@ cq_fun <- function(file, office = NULL) {
 
 # ----- House -------------------------------------------------------------
 
-f <- list.files(path = './raw', pattern = 'hou', full.names = T)
-hou <- map_dfr(f, cq_fun, office = 'House')
+fls <- list.files(path = './raw', pattern = 'hou', full.names = T)
+hou <- map_dfr(fls, cq_fun, office = 'House')
 hou %<>% rename(ThirdVotesMajorPercent = ThirdVotesTotalPercent)
 
 # blank lines, runoffs, and special elections
@@ -47,12 +48,13 @@ table(hou$Type, hou$raceYear)
 # ----- Notes -------------------------------------------------------------
 
 nts <- filter(hou, !is.na(RaceNotes))
-nts <- nts[!grepl('The other vote', nts$RaceNotes), ]
+nts <- nts[!grepl('The other vote was:', nts$RaceNotes), ]
 
 
 # ----- Extra candidates --------------------------------------------------
 
-ext <- hou[grepl('The other vote', hou$RaceNotes), ]
+ext <- hou[grepl('The other vote was:', hou$RaceNotes), ]
+str_split(ext$RaceNotes, ';', simplify = T) -> z
 ext$RaceNotes %<>% str_replace('The other vote was:', '')
 ext <- cbind(
   select(ext, State, Area, raceYear),
@@ -101,6 +103,9 @@ hou %<>%
     DemCandidate[id == 'Florida_District 24_2012'] <- 'Wilson, Frederica S.'
     DemStatus[id == 'Florida_District 24_2012'] <- 'Incumbent'
     DemVotesMajorPercent[id == 'Florida_District 24_2012'] <- 100
+    RepCandidate[id == 'Oklahoma_District 1_2016'] <- ' Bridenstine, Jim'
+    RepStatus[id == 'Oklahoma_District 1_2016'] <- 'Incumbent'
+    RepVotesMajorPercent[id == 'Oklahoma_District 1_2016'] <- 100
   }) %>%
   separate(id, into = c('State', 'Area', 'raceYear'), sep = '_')
 
