@@ -1,11 +1,11 @@
-#!/bin/bash  
+#!/bin/bash
 
 # ------------------------------------------------------------------------------
 # locations
 # ------------------------------------------------------------------------------
 
 # database
-db=~/Projects/congress/opensecrets.sqlite
+db=~/GitHub/congress/opensecrets.sqlite
 
 # zip files
 cd ~/Desktop/opensecrets/
@@ -119,7 +119,6 @@ echo -e "CREATE TABLE cmtes (
     active TEXT
 );\n.exit" | sqlite3 $db
 
-
 # ------------------------------------------------------------------------------
 # loop the zip files
 # ------------------------------------------------------------------------------
@@ -154,6 +153,23 @@ for i in ${y[@]}; do
         rm $f
         rm $f".bak"
         rm -rf $z
-        
+
     done
 done
+
+# ------------------------------------------------------------------------------
+# add industry codes
+# ------------------------------------------------------------------------------
+
+echo -e "CREATE TABLE codes (
+    cat_code TEXT,
+    cat_name TEXT,
+    cat_group TEXT,
+    industry TEXT,
+    sector_short TEXT,
+    sector_long TEXT,
+    cat_group_alt TEXT,
+    PRIMARY KEY(cat_code)
+);\n.exit" | sqlite3 $db
+
+echo -e ".mode csv\n.import codes_industries.csv codes" | sqlite3 $db

@@ -201,7 +201,7 @@ dat %<>% select(-state)
 # ----- Legislator osid's -------------------------------------------------
 
 # opensecrets data
-cands <- tbl(os, 'cands') %>% collect()
+cands <- tbl(db_crp, 'cands') %>% collect()
 cands %<>%
   mutate(
     name = str_trim(firstlast),
