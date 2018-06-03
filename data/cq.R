@@ -1,4 +1,5 @@
 # ----- Preample ----------------------------------------------------------
+
 # helper function for reading cq csv files
 cq_fun <- function(file, office = NULL) {
   dat <- read_csv(file, skip = 2) %>% filter(Office == office)
@@ -8,13 +9,14 @@ cq_fun <- function(file, office = NULL) {
   return(dat)
 }
 
+
 # ----- House -------------------------------------------------------------
 
 fls <- list.files(path = './raw', pattern = 'hou', full.names = T)
-hou <- map_dfr(fls, cq_fun, office = 'House')
+raw <- map_dfr(fls, cq_fun, office = 'House')
 
 # blank lines, runoffs, and special elections
-hou_dupes <- duplicates(hou, c('State', 'Area', 'raceYear'))
+hou_dupes <- duplicates(raw, c('State', 'Area', 'raceYear'))
 hou %<>%
   mutate(Type = 'General') %>%
   unite(id, State, AreaNumber, raceYear) %>%
@@ -33,7 +35,8 @@ hou %<>%
   separate(id, into = c('State', 'AreaNumber', 'raceYear'), sep = '_')
 
 # extra candidates
-ext <- hou[grepl('The other vote', hou$RaceNotes), ]
+ext <- hou[grepl('The other vote was:', hou$RaceNotes), ]
+ext$RaceNotes <- str_extract(ext$RaceNotes, '(The other vote was:)[:print:]+')
 ext$RaceNotes %<>% str_replace('The other vote was:', '')
 ext <- cbind(
   select(ext, State, Area, raceYear),
