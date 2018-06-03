@@ -3,7 +3,7 @@
 *.RData
 *.Rda
 *.Ruserdata
+*.Rprofile
 *.DS_Store
 *.sqlite
 /raw
-.Rproj.user

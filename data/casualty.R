@@ -228,7 +228,7 @@ osid_fun <- function(nm, st, cg) {
   ln <- ln[!ln %in% c('Jr', "II", 'III', '')]
   ln <- ln[length(ln)]
   tmp <- filter(cands, statecode == st & cycle >= (x - 2) & cycle <= (x + 2))
-  tmp <- tmp[str_detect(tmp$name, ln), ]
+  tmp <- tmp[str_detect(tmp$name, fixed(ln, ignore_case = T)), ]
   
   # second criterion: distance
   d1 <- stringdist::stringdist(nm, tmp$name, method = 'jw')

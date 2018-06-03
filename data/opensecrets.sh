@@ -5,17 +5,18 @@
 # ------------------------------------------------------------------------------
 
 # database
-db=~/GitHub/congress/opensecrets.sqlite
+db=opensecrets
 
 # zip files
-cd ~/Desktop/opensecrets/
+cd /Users/JRJ/Desktop/opensecrets/
 
 # ------------------------------------------------------------------------------
 # create empty tables in the database
 # ------------------------------------------------------------------------------
 
 # candidates
-echo -e "CREATE TABLE cands (
+echo -e "DROP TABLE IF EXISTS cands;
+    CREATE TABLE cands (
     cycle INTEGER,
     fecid TEXT,
     osid TEXT,
@@ -28,25 +29,26 @@ echo -e "CREATE TABLE cands (
     incumb TEXT,
     recipcode TEXT,
     nopacs TEXT,
-    PRIMARY KEY(cycle, fecid, osid)
-);\n.exit" | sqlite3 $db
+    PRIMARY KEY(cycle, fecid));" | psql -d $db
 
 # pacs to candidates
-echo -e "CREATE TABLE pacs (
+echo -e "DROP TABLE IF EXISTS pacs;
+    CREATE TABLE pacs (
     cycle INTEGER,
     fecrecno TEXT,
     pacid TEXT,
     osid TEXT,
     amount REAL,
-    date TEXT,
+    date DATE,
     realcode TEXT,
     type TEXT,
     direct_indirect TEXT,
-    fecid TEXT
-);\n.exit" | sqlite3 $db
+    fecid TEXT,
+    PRIMARY KEY(fecrecno));" | psql -d $db
 
 # pac to pac
-echo -e "CREATE TABLE pac_other (
+echo -e "DROP TABLE IF EXISTS pac_other;
+    CREATE TABLE pac_other (
     cycle INTEGER,
     fecrecno TEXT,
     filerid TEXT,
@@ -54,10 +56,10 @@ echo -e "CREATE TABLE pac_other (
     contriblendtrans TEXT,
     city TEXT,
     state TEXT,
-    zipcode INTEGER,
+    zip TEXT,
     fec_occ_emp TEXT,
     primcode TEXT,
-    date TEXT,
+    date DATE,
     amount REAL,
     recipid TEXT,
     party TEXT,
@@ -70,8 +72,8 @@ echo -e "CREATE TABLE pac_other (
     microfilm TEXT,
     type TEXT,
     realcode TEXT,
-    source TEXT
-);\n.exit" | sqlite3 $db
+    source TEXT,
+    PRIMARY KEY(fecrecno, microfilm));" | psql -d $db
 
 # individuals
 echo -e "DROP TABLE IF EXISTS indivs;
@@ -84,12 +86,12 @@ echo -e "DROP TABLE IF EXISTS indivs;
     orgname TEXT,
     ultorg TEXT,
     realcode TEXT,
-    date TEXT,
+    date DATE,
     amount REAL,
     street TEXT,
     city TEXT,
     state TEXT,
-    zip INTEGER,
+    zip TEXT,
     recipcode TEXT,
     type TEXT,
     cmteid TEXT,
@@ -98,11 +100,12 @@ echo -e "DROP TABLE IF EXISTS indivs;
     microfilm TEXT,
     occ TEXT,
     emp TEXT,
-    source TEXT
-);\n.exit" | sqlite3 $db
+    source TEXT,
+    PRIMARY KEY(fecrecno, contribid, microfilm));" | psql -d $db
 
 # committees
-echo -e "CREATE TABLE cmtes (
+echo -e "DROP TABLE IF EXISTS cmtes;
+    CREATE TABLE cmtes (
     cycle INTEGER,
     cmteid TEXT,
     pacshort TEXT,
@@ -116,8 +119,8 @@ echo -e "CREATE TABLE cmtes (
     source TEXT,
     sensitive TEXT,
     notdomestic TEXT,
-    active TEXT
-);\n.exit" | sqlite3 $db
+    active TEXT,
+    PRIMARY KEY(cycle, cmteid));" | psql -d $db
 
 # ------------------------------------------------------------------------------
 # loop the zip files
@@ -127,10 +130,10 @@ echo -e "CREATE TABLE cmtes (
 y=($(seq 90 2 98) $(seq -f "%02g" 0 2 16))
 
 # array of tables
-t=("cands" "cmtes" "indivs" "pacs" "pac_other")
+t=("cands" "cmtes" "pac_other") #"indivs" "pacs")
 
 for i in ${y[@]}; do
-    for j in ${t[2]}; do
+    for j in ${t[@]}; do
 
         # filename and zip file
         f=$j$i".txt"
@@ -146,30 +149,55 @@ for i in ${y[@]}; do
         LANG=C sed -i.bak 's/"/""/g' $f
         LANG=C sed -i.bak 's/|/"/g' $f
 
-        # add to sqlite db
-        echo -e ".mode csv\n.import" $f $j | sqlite3 $db
+        # convert blank dates to 01/01/0001
+        if [[ $j == "indivs" ]];then
+            csvfix map -f 9 -fv "" -tv "01/01/0001" -sqf 1:23 $f > "out1.txt"
+        elif [[ $j == "pacs" ]];then
+            csvfix map -f 6 -fv "" -tv "01/01/0001" -sqf 1:10 $f > "out1.txt"
+        elif [[ $j == "pac_other" ]];then
+            csvfix map -f 11 -fv "" -tv "01/01/0001" -sqf 1:24 $f > "out1.txt"
+        else
+            cp $f "out1.txt"
+        fi
+        rm $f
+
+        # convert to utf-8 encoding
+        iconv -f ISO-8859-1 -t utf-8 'out1.txt' > "out2.txt"
+        rm "out1.txt"
+
+        # remove any duplicates
+        csvfix unique 'out2.txt' > "out3.txt"
+        rm "out2.txt"
+
+        # copy to database
+        echo "\copy $j from 'out3.txt' csv;" | psql -d $db
 
         # clean up
-        rm $f
+        rm "out3.txt"
         rm $f".bak"
         rm -rf $z
 
     done
 done
 
+# indivs 04: duplicate 4110520041045135963 (373570), 
+# indivs 12: duplicate 4122020121176554351 (3659686)
+
 # ------------------------------------------------------------------------------
 # add industry codes
 # ------------------------------------------------------------------------------
 
-echo -e "CREATE TABLE codes (
-    cat_code TEXT,
-    cat_name TEXT,
-    cat_group TEXT,
+echo "DROP TABLE IF EXISTS codes;
+    CREATE TABLE codes (
+    code TEXT,
+    name TEXT,
+    grouping TEXT,
     industry TEXT,
     sector_short TEXT,
     sector_long TEXT,
-    cat_group_alt TEXT,
-    PRIMARY KEY(cat_code)
-);\n.exit" | sqlite3 $db
+    grouping_alt TEXT,
+    PRIMARY KEY(code));" | psql -d $db
 
-echo -e ".mode csv\n.import codes_industries.csv codes" | sqlite3 $db
+echo "\copy codes from 'codes_industries.csv' csv;" | psql -d $db
+
+96, 98, 00, 02 indivs problems

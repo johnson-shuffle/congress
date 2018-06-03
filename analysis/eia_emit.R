@@ -162,7 +162,12 @@ z1 <- left_join(x1, y1, by = c('year' = 'year', 'statedscr' = 'statecode')) %>%
   mutate(r = co2 / value) %>%
   arrange(desc(r), year)
 
-p <- ggplot(aes(factor(year), r), data = filter(z1, !statecode %in% c('ID', 'VT'))) +
+p <- ggplot(data = filter(z1, !statecode %in% c('ME', 'ID', 'VT'))) +
   #geom_text(aes(label = statecode)) +
-  geom_boxplot()
+  geom_boxplot(aes(factor(year), r)) +
+  theme_tufte() +
+  theme(
+    axis.text.x = element_text(angle = 45, vjust = 0.5)
+  ) +
+  labs(x = 'Year', y = 'Ratio')
 p
