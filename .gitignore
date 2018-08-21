@@ -1,9 +1,11 @@
-*.Rproj.user
-*.Rhistory
 *.RData
 *.Rda
-*.Ruserdata
+*.Rhistory
 *.Rprofile
+*.Rproj.user
+*.Rproj
+*.Ruserdata
 *.DS_Store
 *.sqlite
+scratchwork.R
 /raw

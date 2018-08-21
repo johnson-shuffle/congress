@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# ------------------------------------------------------------------------------
-# locations
-# ------------------------------------------------------------------------------
+
+# ----- locations ---------------------------------------------------------
 
 # database
 db=opensecrets
@@ -10,9 +9,8 @@ db=opensecrets
 # zip files
 cd /Users/JRJ/Desktop/opensecrets/
 
-# ------------------------------------------------------------------------------
-# create empty tables in the database
-# ------------------------------------------------------------------------------
+
+# ----- # create empty tables in the database -----------------------------
 
 # candidates
 echo -e "DROP TABLE IF EXISTS cands;
@@ -122,9 +120,8 @@ echo -e "DROP TABLE IF EXISTS cmtes;
     active TEXT,
     PRIMARY KEY(cycle, cmteid));" | psql -d $db
 
-# ------------------------------------------------------------------------------
-# loop the zip files
-# ------------------------------------------------------------------------------
+
+# ----- loop the zip files ------------------------------------------------
 
 # array of years
 y=($(seq 90 2 98) $(seq -f "%02g" 0 2 16))
@@ -180,12 +177,8 @@ for i in ${y[@]}; do
     done
 done
 
-# indivs 04: duplicate 4110520041045135963 (373570), 
-# indivs 12: duplicate 4122020121176554351 (3659686)
 
-# ------------------------------------------------------------------------------
-# add industry codes
-# ------------------------------------------------------------------------------
+# ----- add industry codes ------------------------------------------------
 
 echo "DROP TABLE IF EXISTS codes;
     CREATE TABLE codes (
@@ -199,5 +192,3 @@ echo "DROP TABLE IF EXISTS codes;
     PRIMARY KEY(code));" | psql -d $db
 
 echo "\copy codes from 'codes_industries.csv' csv;" | psql -d $db
-
-96, 98, 00, 02 indivs problems

@@ -11,15 +11,16 @@ cq_fun <- function(file, office = NULL) {
 }
 
 
-# ----- House -------------------------------------------------------------
+# ----- Import ------------------------------------------------------------   
 
+# raw data
 fls <- list.files(path = './raw', pattern = 'hou', full.names = T)
-hou <- map_dfr(fls, cq_fun, office = 'House')
-hou %<>% rename(ThirdVotesMajorPercent = ThirdVotesTotalPercent)
+dat <- map_dfr(fls, cq_fun, office = 'House')
+dat %<>% rename(ThirdVotesMajorPercent = ThirdVotesTotalPercent)
 
 # blank lines, runoffs, and special elections
-hou_dupes <- duplicates(hou, c('State', 'Area', 'raceYear'))
-hou %<>%
+dat_dupes <- duplicates(dat, c('State', 'Area', 'raceYear'))
+dat %<>%
   mutate(Type = 'General') %>%
   unite(id, State, AreaNumber, raceYear) %>%
   filter(id != 'Louisiana_1_2014' | RepVotes != 'N/A') %>%  # blank line
@@ -36,24 +37,25 @@ hou %<>%
     Type[id == 'Texas_23_2006' & RepVotes == '32,217'] <- 'Runoff'
   }) %>%
   separate(id, into = c('State', 'AreaNumber', 'raceYear'), sep = '_')
+rm(dat_dupes)
 
 # missing elections?
 # 1996: LA election: 1-3 (unopposed), 4, 6
 # 2006: is ok
 # 2014: LA election: 2
 # 2016: MT election: At-Large
-table(hou$Type, hou$raceYear)
+table(dat$Type, dat$raceYear)
 
 
 # ----- Extra Candidates --------------------------------------------------
 
-ext <- hou[grepl('The other vote was:', hou$RaceNotes), ]
+ext <- dat[grepl('The other vote was:', dat$RaceNotes), ]
 ext$RaceNotes <- str_extract(ext$RaceNotes, '(The other vote was:)[:print:]+')
 ext$RaceNotes %<>% str_replace('The other vote was:', '')
 ext <- cbind(
   select(ext, State, Area, raceYear, Type),
   as_tibble(str_split(ext$RaceNotes, ';', simplify = T))
-)
+  )
 ext %<>% gather(key, value, -1:-4)
 
 # extract patterns: party, name, votes
@@ -72,10 +74,10 @@ ext %<>%
 
 # ----- Reshape to Long ---------------------------------------------------
 
-hou_long <- tibble(
-  State = NA,
-  Area = NA,
-  raceYear = NA,
+dat_long <- tibble(
+  statename = NA,
+  district = NA,
+  cycle = NA,
   type = NA,
   name = NA,
   party = NA,
@@ -83,29 +85,50 @@ hou_long <- tibble(
   votes = NA
 )
 
-# republicans (and election type)
-hou_long[1:5656, c(1:5, 7:8)] <- hou[1:5656, c(2, 6, 4, 25, 9:10, 8)]
-hou_long$party[1:5656] <- 'Rep'
+# identifying columns
+cols1 <- c('State', 'Area', 'raceYear', 'Type')
+cols2 <- c('Candidate', 'Status', 'Votes')
+
+# rows
+rows1 <- 1:nrow(dat)
+rows2 <- (nrow(dat) + 1):(2 * nrow(dat))
+rows3 <- (2 * nrow(dat) + 1):(3 * nrow(dat))
+
+# republicans
+dat_long[rows1, c(1:5, 7:8)] <- dat[rows1, c(cols1, str_c('Rep', cols2))]
+dat_long$party[rows1] <- 'Rep'
 
 # democrats
-hou_long[5657:11312, c(1:5, 7:8)] <- hou[1:5656, c(2, 6, 4, 25, 12:13, 11)]
-hou_long$party[5657:11312] <- 'Dem'
+dat_long[rows2, c(1:5, 7:8)] <- dat[rows1, c(cols1, str_c('Dem', cols2))]
+dat_long$party[rows2] <- 'Dem'
 
 # third party
-hou_long[11313:16968, c(1:5, 7:8)] <- hou[1:5656, c(2, 6, 4, 25, 16:17, 15)]
-hou_long$party[11313:16968] <- 'Third'
+dat_long[rows3, c(1:5, 7:8)] <- dat[rows1, c(cols1, str_c('Third', cols2))]
+dat_long$party[rows3] <- 'Third'
+
+# recode statenames to statecodes using state data
+states <- tbl(db, 'states') %>% collect()
+codes  <- states$statecode ; names(codes) <- states$statename
+dat_long$statename %<>% str_replace_all(codes)
+dat_long$statename %<>% str_replace_all('West VA', 'WV')
+dat_long %<>% rename(statecode = statename)
+
+# recode at large districts to one
+dat_long$district %<>% str_replace('District ', '')
+dat_long$district[dat_long$district == 'At Large'] <- '1'
+dat_long$district %<>% as.numeric()
 
 
 # ----- Fix Miscodes ------------------------------------------------------
 
-# convert votes to numeric / store unopposed as infinity
-hou_long$votes %<>% str_replace(',', '')
-hou_long$votes %<>% str_replace('Unopposed', 'Inf')
-hou_long$votes %<>% as.numeric()
+# convert votes to numeric/store unopposed as infinity
+dat_long$votes %<>% str_replace(',', '')
+dat_long$votes %<>% str_replace('Unopposed', 'Inf')
+dat_long$votes %<>% as.numeric()
 
 # find N/A row entries
-hou_nas <- hou_long %>%
-  group_by(State, Area, raceYear, type) %>%
+dat_nas <- dat_long %>%
+  group_by(statecode, district, cycle, type) %>%
   mutate(
     votes = as.numeric(votes),
     votes = replace(votes, is.na(votes), 0)
@@ -114,46 +137,55 @@ hou_nas <- hou_long %>%
     votes = sum(votes)
   ) %>%
   filter(votes == 0) %>%
-  unite(id, State, Area, raceYear) %>%
+  unite(id, statecode, district, cycle) %>%
   use_series('id')
 
-# fix N/A row entries
-hou_long %<>%
-  unite(id, State, Area, raceYear) %>%
+# fix N/A row entries (plus one completely miscoded name)
+dat_long %<>%
+  unite(id, statecode, district, cycle) %>%
   mutate(
-    votes = replace(votes, id %in% hou_nas, Inf)
+    votes = replace(votes, id %in% dat_nas, Inf)
   ) %>%
   within({
-    name[id == 'Florida_District 19_2004'] <- 'Wexler, Robert'
-    status[id == 'Florida_District 19_2004'] <- 'Incumbent'
-    name[id == 'Florida_District 15_2012'] <- 'Ross, Dennis A.'
-    status[id == 'Florida_District 15_2012'] <- 'Incumbent'
-    name[id == 'Florida_District 24_2012'] <- 'Wilson, Frederica S.'
-    status[id == 'Florida_District 24_2012'] <- 'Incumbent'
-    name[id == 'Florida_District 24_2016'] <- 'Wilson, Frederica S.'
-    status[id == 'Florida_District 24_2016'] <- 'Incumbent'
-    name[id == 'Oklahoma_District 1_2016'] <- ' Bridenstine, Jim'
-    status[id == 'Oklahoma_District 1_2016'] <- 'Incumbent'
+    name[id == 'FL_19_2004'] <- 'Wexler, Robert'
+    status[id == 'FL_19_2004'] <- 'Incumbent'
+    name[id == 'FL_15_2012'] <- 'Ross, Dennis A.'
+    status[id == 'FL_15_2012'] <- 'Incumbent'
+    name[id == 'FL_24_2012'] <- 'Wilson, Frederica S.'
+    status[id == 'FL_24_2012'] <- 'Incumbent'
+    name[id == 'FL_24_2016'] <- 'Wilson, Frederica S.'
+    status[id == 'FL_24_2016'] <- 'Incumbent'
+    name[id == 'OK_1_2016'] <- ' Bridenstine, Jim'
+    status[id == 'OK_1_2016'] <- 'Incumbent'
   }) %>%
-  separate(id, into = c('State', 'Area', 'raceYear'), sep = '_')
+  separate(id, into = c('statecode', 'district', 'cycle'), sep = '_')
 
-# drop remaining N/A's
-hou_long %<>% filter(!name %in%  c('N/A', 'Write-In'))
+# drop problematic names
+dat_long <- dat_long[!str_detect(dat_long$name, 'All Others'), ]
+dat_long <- dat_long[!str_detect(dat_long$name, 'N/A'), ]
+dat_long <- dat_long[!str_detect(dat_long$name, 'NULL'), ]
+dat_long <- dat_long[!str_detect(dat_long$name, 'Scatter(ing)|(ed)'), ]
+dat_long <- dat_long[!str_detect(dat_long$name, 'Write-In'), ]
+dat_long <- dat_long[!str_detect(dat_long$name, 'Miscellaneous'), ]
+
+# convert using latin1
+dat_long$name %<>% str_conv('latin1')
 
 # two incumbents
-hou_incb <- hou_long %>%
-  group_by(State, Area, raceYear, type) %>%
+dat_incb <- dat_long %>%
+  group_by(statecode, district, cycle, type) %>%
   count(status) %>%
   filter(status == 'Incumbent' & n == 2)
 
 # two incumbents: all but one are result of redistricting
-hou_long <- hou_long %>%
-  unite(id, State, Area, raceYear, party) %>%
+dat_long %<>%
+  unite(id, statecode, district, cycle, party) %>%
   within({
-    status[id == 'California_District 12_2004_Rep'] <- 'Challenger'
+    status[id == 'CA_12_2004_Rep'] <- 'Challenger'
   }) %>%
-  separate(id, into = c('State', 'Area', 'raceYear', 'party'), sep = '_')
-  
+  separate(id, into = c('statecode', 'district', 'cycle', 'party'), sep = '_')
+rm(dat_incb)  
+
 
 # ----- Legislator osid's -------------------------------------------------
 
@@ -166,23 +198,10 @@ cands %<>%
     statecode = str_sub(distid_run, 1, 2),
     district = str_sub(distid_run, 3, 4) %>% as.numeric()
   ) %>%
+  filter(!is.na(district)) %>%
   mutate_if(is.character, str_trim) %>%
   select(cycle, name, osid, statecode, district) %>%
   distinct()
-
-# recode statenames to statecodes using state data
-states <- tbl(db, 'states') %>% collect()
-codes  <- states$statecode ; names(codes) <- states$statename
-hou_long$State %<>% str_replace_all(codes)
-hou_long$State %<>% str_replace_all('West VA', 'WV')
-
-# recode at large districts to one
-hou_long$Area %<>% str_replace('District ', '')
-hou_long$Area[hou_long$Area == 'At Large'] <- '1'
-hou_long$Area %<>% as.numeric()
-
-# convert using latin1
-hou_long$name %<>% str_conv('latin1')
 
 # helper function
 osid_fun <- function(nm, st, dt, cy, cut = 0.2) {
@@ -191,21 +210,36 @@ osid_fun <- function(nm, st, dt, cy, cut = 0.2) {
   tmp <- filter(cands, statecode == st & district == dt & cycle == cy)
   
   # rearrange name
-  nm %<>% str_split(',', n = 2, simplify = T)
-  nm %<>% str_trim()
-  nm <- str_c(nm[2], nm[1], sep = ' ')
+  nms <- str_split(nm, ',', n = 2, simplify = T)
+  nms %<>% str_trim()
+  fnm <- nms[2]
+  lnm <- nms[1]
+  rnm <- str_c(fnm, lnm, sep = ' ')
   
-  # first criterion: name
-  nm2 <- nm
-  nm2 %<>% str_replace_all(',|-|\\.', ' ')
-  nm2 %<>% str_replace_all('\\s+', '|')
-  cond <- T %in% grepl(nm2, tmp$name, ignore.case = T)
-  if (cond) {
-    tmp <- tmp[grep(nm2, tmp$name, ignore.case = T), ]
+  # first criterion: last name (remove special characters and initials)
+  lnmc <- str_replace_all(lnm, ',|-|\\.', ' ')
+  lnmc %<>% str_replace_all('^[A-Z]\\s+', ' ')
+  lnmc %<>% str_replace_all('\\s+[A-Z]\\s+', ' ')
+  lnmc %<>% str_trim()
+  lnmc %<>% str_replace_all('\\s+', '|')
+  cond_lnm <- T %in% grepl(lnmc, tmp$name, ignore.case = T)
+  if (cond_lnm) {
+    tmp <- tmp[grep(lnmc, tmp$name, ignore.case = T), ]
   }
   
-  # second criterion: distance
-  d1 <- stringdist::stringdist(nm, tmp$name, method = 'jw')
+  # second criterion: rearranged name (remove special characters and initials)
+  rnmc <- str_replace_all(rnm, ',|-|\\.', ' ')
+  rnmc %<>% str_replace_all('^[A-Z]\\s+', ' ')
+  rnmc %<>% str_replace_all('\\s+[A-Z]\\s+', ' ')
+  rnmc %<>% str_trim()
+  rnmc %<>% str_replace_all('\\s+', '|')
+  cond_rnm <- T %in% grepl(rnmc, tmp$name, ignore.case = T)
+  if (cond_rnm & !cond_lnm) {
+    tmp <- tmp[grep(rnmc, tmp$name, ignore.case = T), ]
+  }
+  
+  # third criterion: distance
+  d1 <- stringdist::stringdist(rnm, tmp$name, method = 'jw')
   d2 <- NA
   if (cond) {
     d2 <- length(tmp$name)
@@ -215,52 +249,182 @@ osid_fun <- function(nm, st, dt, cy, cut = 0.2) {
   }
   
   # return value
-  if (is_empty(d1) | is.na(d1[1])) {
-    return(list(
-      osid = NA,
-      match = NA,
-      distance = NA,
-      matches = 0
-    ))
-  } else {
-    return(list(
-      osid = tmp$osid[which.min(d1)],
-      match = tmp$name[which.min(d1)],
-      distance = min(d1),
-      matches = d2
-    ))
-  }
+  return(list(
+    osid = tmp$osid[which.min(d1)],
+    match = tmp$name[which.min(d1)],
+    last_name = cond_lnm,
+    distance = min(d1),
+    matches = d2
+  ))
 
 }
 osid_fun <- safely(osid_fun)
 
 # new variables
-hou_long <- hou_long %>%
+dat_long <- dat_long %>%
   mutate(
     osid = NA,
     match_name = NA,
-    distance = NA
+    last_name = F,
+    distance = NA,
+    matches = NA
   )
 
 # loop the helper function
-for (i in 1:nrow(hou_long)) {
+pb <- progress_estimated(nrow(dat_long))
+for (i in 1:nrow(dat_long)) {
   tmp <- osid_fun(
-    hou_long$name[i],
-    hou_long$State[i],
-    hou_long$Area[i],
-    hou_long$raceYear[i]
+    dat_long$name[i],
+    dat_long$statecode[i],
+    dat_long$district[i],
+    dat_long$cycle[i]
   )
-  hou_long <- hou_long %>%
+  dat_long <- dat_long %>%
     within({
       osid[i] <- ifelse(is.null(tmp$result), NA, tmp$result$osid)
       match_name[i] <- ifelse(is.null(tmp$result), NA, tmp$result$match)
+      last_name[i] <- ifelse(is.null(tmp$result), NA, tmp$result$last_name)
       distance[i] <- ifelse(is.null(tmp$result), NA, tmp$result$distance)
+      matches[i] <- ifelse(is.null(tmp$result), NA, tmp$result$matches)
     })
-  print(i) ; rm(tmp)
+  pb$tick()$print() ; rm(tmp)
 }
 
-y <- filter(hou_long, is.na(osid)) %>% 
-  arrange(desc(votes))
-z <- filter(hou_long, distance > 0.2 & matches == 0) %>%
-  distinct(name, match_name, osid, distance) %>%
+
+# ----- Manual Fixes ------------------------------------------------------
+
+# fix one: no last name match but high vote getters with reasonable distance
+mf1 <- filter(dat_long, !last_name & (distance < 0.25 | votes > 1E4)) %>%
+  distinct(statecode, district, name, match_name)
+
+mf1_probs <- dat_long %>%
+  filter(name %in% mf1$name[c(2, 10, 15, 21, 29, 30, 34, 43, 49, 52, 53, 57)]) %>%
+  group_by(name, statecode, district) %>%
+  summarise_at(vars(cycle, votes), str_c, collapse = ',') %>%
+  distinct()
+
+mf1_nas <- c(
+  'Bruner, Natalie M.',
+  'Depalma, Jennifer A.',
+  'Hayward, William R.',
+  'Henderson, Elaine M.',
+  'Markgraf, Rosemarie',
+  'McCourt, John C.',
+  'Miller, Jeffrey A.',
+  'Sawyer, John W',
+  'Stockwell, Christopher John',
+  'Thompson, Drew'
+)
+
+dat_long %<>%
+  mutate(
+    name = ifelse(name == 'Belardino, Mario D.', 'Boustany, Charles W. Jr.', name),
+    osid = ifelse(name == 'Boustany, Charles W. Jr.', 'N00026595', osid),
+    osid = ifelse(name %in% mf1_nas, NA, osid)
+    
+  )
+
+# fix two: no last name match and everyone else
+mf2 <- filter(dat_long, !last_name & !(distance < 0.25 | votes > 1E4)) %>%
+  distinct(statecode, district, name, match_name)
+
+mf2_nas <- mf2$name
+
+dat_long %<>%
+  mutate(
+    osid = ifelse(name %in% mf2_nas, NA, osid)
+  )
+
+# fix three: last name match but large distance
+mf3 <- filter(dat_long, last_name & distance > 0.25) %>%
+  distinct(statecode, district, name, match_name, distance) %>%
   arrange(desc(distance))
+
+# fix four
+mf4 <- dat_long %>%
+  distinct(name, osid) %>%
+  count(name) %>%
+  filter(n > 1) %>%
+  use_series('name')
+
+mf4_probs <- dat_long %>%
+  filter(name %in% mf4) %>%
+  arrange(name, osid, distance)
+
+#   within({
+#     name[statecode == 'LA' & cycle == 2006 & name == 'Belardino, Mario D.'] <-
+#       'Boustany, Charles W. Jr.'
+#     osid[statecode == 'LA' &cycle == 2006 & name == 'Belardino, Mario D.'] <-
+#       'N00026595'
+#     osid[statecode == 'PA' &cycle == 2008 & name == "O'Donnell, Steve"] <-
+#       'N00029337'
+#   })
+
+# fix two: matches with large distances
+mf2 <- filter(dat_long, distance > 0.2) %>%
+  group_by(statecode, district, name, match_name, osid, distance) %>%
+  summarise_at(vars(votes, matches), mean) %>%
+  distinct() %>%
+  arrange(desc(distance))
+
+dat_long %<>%
+  within({
+    osid[statecode == 'SC' & district ==  4 & name == 'Sumerel, Jeff'] <-
+      NA
+    osid[statecode == 'VA' & district ==  8 & name == 'Moran, James P. Jr.'] <-
+      'N00002083'
+    osid[statecode == 'MD' & district ==  2 & name == 'Ehrlich, Robert L. Jr.'] <-
+      'N00001925'
+    osid[statecode == 'MA' & district ==  6 & name == 'Stockwell, Christopher John'] <-
+      'N00001925'
+    osid[statecode == 'FL' & district == 23 & name == 'Woods, Al'] <-
+      'N00002864'
+    osid[statecode == 'VA' & district == 11 & name == 'Davis, Thomas M. III'] <-
+      'N00002045'
+    osid[statecode == 'SC' & district ==  1 & name == 'Sanford, Marshall Clement Jr.'] <-
+      'N00002424'
+    osid[statecode == 'GA' & district ==  1 & name == 'Carter, Earl Leroy'] <-
+      'N00035861'
+    osid[statecode == 'OK' & district ==  2 & name == 'Boren, David Daniel'] <-
+      'N00026481'
+    osid[statecode == 'NJ' & district == 13 & name == 'Hester, Richard S. Sr.'] <-
+      'N00000710'
+    osid[statecode == 'GA' & district ==  3 & name == 'Collins, Michael Allen'] <-
+      'N00002556'
+    osid[statecode == 'FL' & district ==  5 & name == 'Russell, John'] <-
+      'N00026818'
+    osid[statecode == 'IL' & district == 18 & name == 'Vance, Don'] <-
+      NA
+    osid[statecode == 'AK' & district ==  1 & name == 'Duncan, Jim'] <-
+      'N00008022'
+    osid[statecode == 'TN' & district ==  5 & name == 'Kovach, Thomas F.'] <-
+      'N00009517'
+    osid[statecode == 'IN' & district ==  7 & name == 'Pease, Edward A.'] <-
+      'N00003910'
+    osid[statecode == 'GA' & district == 13 & name == 'Crane, Mike'] <-
+      'N00031893'
+    osid[statecode == 'IL' & district == 11 & name == 'Weller, Gerald C.'] <-
+      'N00004745'
+    osid[statecode == 'AZ' & district ==  2 & name == 'Barron, Ed'] <-
+      'N00006416'
+    osid[statecode == 'WA' & district ==  4 & name == 'Hastings, Richard'] <-
+      'N00009157'
+    osid[statecode == 'OH' & district == 12 & name == 'Hart, Robert M.'] <-
+      'N00035631'
+    osid[statecode == 'NH' & district ==  1 & name == 'Preston, Robert T.'] <-
+      'N00000094'
+    osid[statecode == 'VA' & district ==  3 & name == 'Scott, Robert C.'] <-
+      'N00002147'
+    osid[statecode == 'FL' & district == 12 & name == 'Hagenmaier, Robert D.'] <-
+      'N0002700'
+    osid[statecode == 'FL' & district == 22 & name == 'McLain, John'] <-
+      'N00025756'
+    osid[statecode == 'PA' & district == 10 & name == 'Hackett, Chris'] <-
+      'N00029334'
+    osid[statecode == 'NY' & district == 27 & name == 'Reynolds, Thomas M.'] <-
+      'N00001295'
+    osid[statecode == 'CT' & district ==  5 & name == 'Maloney, James H.'] <-
+      'N00000637'
+    osid[statecode == 'CA' & district == 50 & name == 'Divine, Bob'] <-
+      'N00006980'
+  })
