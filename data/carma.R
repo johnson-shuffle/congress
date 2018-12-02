@@ -1,41 +1,55 @@
-# ----- Preample ----------------------------------------------------------
+# ----- preample ----------------------------------------------------------
 
 
-# ----- Create List of Districts ------------------------------------------
+# ----- create list of districts ------------------------------------------
 
-# carma data is for 2004 & 2009 (check for differences in districts)
-dis_108 <- tbl(db, sql(
-  "SELECT state_abbrev, district_code FROM (
-   SELECT DISTINCT congress, state_abbrev, district_code FROM voteview_memb
-   WHERE congress = 108 AND chamber = 'House')"
-  ))
-dis_111 <- tbl(db, sql(
-  "SELECT state_abbrev, district_code FROM (
-   SELECT DISTINCT congress, state_abbrev, district_code FROM voteview_memb
-   WHERE congress = 111 AND chamber = 'House')"
-))
-all.equal(collect(dis_108), collect(dis_111))
+# carma data is for 2004 & 2009 
+dis_108 <- dbGetQuery(db, "
+  SELECT state_code, district_code
+  FROM (
+    SELECT DISTINCT congress, state_code, district_code
+    FROM voteview_memb
+    WHERE congress = 108 AND chamber = 'House'
+  ) AS temp
+  ")
 
-# add fips
-dis <- tbl(db, sql(
-  "SELECT state_abbrev, district_code, fips FROM (
-   SELECT DISTINCT congress, state_abbrev, district_code FROM voteview_memb
-   WHERE congress = 108 AND chamber = 'House') AS TBL_L
-   LEFT JOIN states ON TBL_L.state_abbrev = states.statecode"
-))
+dis_111 <- dbGetQuery(db, "
+  SELECT state_code, district_code
+  FROM (
+    SELECT DISTINCT congress, state_code, district_code
+    FROM voteview_memb
+    WHERE congress = 108 AND chamber = 'House'
+  ) AS temp
+  ")
 
-# pad fips & district_code and correct for single district states
-singles <- c("AK", "DE", "MT", "ND", "SD", "VT", "WY")
-dis <- collect(dis) %>%
+# check for differences in districts
+all.equal(dis_108, dis_111)
+rm(dis_108, dis_111)
+
+# get districts with fips
+dis <- dbGetQuery(db, "
+  SELECT fips, temp.state_code, district_code, at_large
+  FROM (
+    SELECT DISTINCT congress, state_code, district_code
+    FROM voteview_memb
+    WHERE congress = 108 AND chamber = 'House'
+  ) AS temp
+  LEFT JOIN states ON temp.state_code = states.state_code
+  ")
+
+# pad fips / district_code, correct for single district states
+dis %<>%
   mutate(
     fips = str_pad(fips, 2, 'left', '0'),
     district_code = str_pad(district_code, 2, 'left', '0'),
-    district_code = replace(district_code, state_abbrev %in% singles, '00')
-  )
+    district_code = if_else(at_large, '00', district_code)
+  ) %>%
+  select(-at_large)
 
 
-# ----- District Emissions ------------------------------------------------
+# ----- district emissions ------------------------------------------------
 
+# helper function
 carma_fun <- function(row, data = NULL, pb = NULL) {
   
   stopifnot(!is.null(data))
@@ -62,26 +76,35 @@ pb <- progress_estimated(nrow(dis))
 carma_list <- map(1:nrow(dis), carma_fun, data = dis, pb = pb)
 
 
-# ----- Tidy Up -----------------------------------------------------------
+# ----- tidy up -----------------------------------------------------------
 
 # bind togther
 carma <- do.call(rbind, carma_list)
 
 # change classes
-carma <- carma %>%
+carma %<>%
   filter(year != 'Future') %>%
-  mutate_at(c(2:4), function(x) gsub(',', '', x)) %>%
-  mutate_at(c(1, 9, 10), as.numeric) %>%
-  mutate_if(is.character, as.numeric)
+  mutate_at(
+    c(2:4),
+    str_remove_all
+  ) %>%
+  mutate_at(
+    c(1, 9, 10),
+    as.integer
+  ) %>%
+  mutate_if(is.character, as.integer)
 
 # reshape
 carma <- gather(carma, variable, value, 2:8)
 
 # units
-carma$variable <- 'carbon dioxide'
-carma$units <- 'tons'
+carma %<>%
+  mutate(
+    variable = 'carbon dioxide',
+    units = 'tons'
+  )
 
 
-# ----- Add to Database --------------------------------------------------
+# ----- add to database --------------------------------------------------
 
-copy_to(db, carma, temporary = F, overwrite = T)
+dbWriteTable(db, 'carma', carma, append = T, row.names = F)

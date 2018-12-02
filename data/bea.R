@@ -1,7 +1,7 @@
-# ----- Preample ----------------------------------------------------------
+# ----- preample ----------------------------------------------------------
 
 
-# ----- Download and Unzip ------------------------------------------------
+# ----- download and unzip ------------------------------------------------
 
 td <- tempdir()
 
@@ -25,7 +25,7 @@ dat3 <- read_csv(str_c(td, '/SA1_1929_2016.csv'))
 unlink(td)
 
 
-# ----- NAICS 1997 to 2016 ------------------------------------------------
+# ----- naics 1997 to 2016 ------------------------------------------------
 
 # add fips (na's correspond to notes)
 naics <- dat1 %>%
@@ -47,7 +47,7 @@ sic <- dat2 %>%
   select(-`1997`)
 
 
-# ----- SIC 1963 to 1996 --------------------------------------------------
+# ----- sic 1963 to 1996 --------------------------------------------------
 
 # reshape to wide and convert year
 sic <- gather(sic, year, value, `1963`:`1996`) %>%
@@ -61,7 +61,7 @@ gsi <- dat3 %>%
   filter(!is.na(fips))
 
 
-# ----- GSI and Population -----------------------------------------------
+# ----- gsi and population -----------------------------------------------
 
 # reshape to wide and convert value & year 
 gsi <- gather(gsi, year, value, `1929`:`2016`) %>%
@@ -72,36 +72,48 @@ bea_gsi <- filter(gsi, LineCode == 1)
 bea_pop <- filter(gsi, LineCode == 2)
 
 
-# ----- Tidy Up ----------------------------------------------------------
+# ----- tidy up ----------------------------------------------------------
  
 # bind gsp together
 bea_gsp <- rbind(sic, naics)
 
 # names
-names(bea_gsi) %<>% gsub(' ', '_', .) %>% tolower()
-names(bea_gsp) %<>% gsub(' ', '_', .) %>% tolower()
-names(bea_pop) %<>% gsub(' ', '_', .) %>% tolower()
+names(bea_gsi) %<>% str_replace(' ', '_') %>% tolower()
+names(bea_pop) %<>% str_replace(' ', '_') %>% tolower()
+names(bea_gsp) %<>% str_replace(' ', '_') %>% tolower()
+
+# renames
+bea_gsi %<>% rename(series = table)
+bea_pop %<>% rename(series = table)
+
+# drop national and regional totals
+bea_gsi %<>% filter(fips != 0 & fips <= 56)
+bea_pop %<>% filter(fips != 0 & fips <= 56)
+bea_gsp %<>% filter(fips != 0 & fips <= 56)
 
 # add units
-bea_gsi %<>% mutate(
-  units = str_extract(description, "\\([^()]+\\)"),
-  units = str_replace(units, '\\(', ''),
-  units = str_replace(units, '\\)', ''),
-  description = 'Personal income'
-)
-bea_pop %<>% mutate(
-  units = str_extract(description, "\\([^()]+\\)"),
-  units = str_replace(units, '\\(', ''),
-  units = str_replace(units, '\\)', ''),
-  description = 'Population'
-)
-bea_gsp %<>% mutate(
-  units = 'millions of current dollars'
-)
+bea_gsi %<>% 
+  mutate(
+    units = str_extract(description, "\\([^()]+\\)"),
+    units = str_replace(units, '\\(', ''),
+    units = str_replace(units, '\\)', '')
+  )
+
+bea_pop %<>% 
+  mutate(
+    units = str_extract(description, "\\([^()]+\\)"),
+    units = str_replace(units, '\\(', ''),
+    units = str_replace(units, '\\)', '')
+  )
+
+bea_gsp %<>% 
+  mutate(
+    units = 'millions of current dollars'
+  )
 
 
-# ----- Add to Database --------------------------------------------------
+# ----- add to database --------------------------------------------------
 
-copy_to(db, bea_gsp, temporary = F, overwrite = T)
-copy_to(db, bea_gsi, temporary = F, overwrite = T)
-copy_to(db, bea_pop, temporary = F, overwrite = T)
+dbWriteTable(db, "bea_gsp", bea_gsp, append = T, row.names = F)
+dbWriteTable(db, "bea_gsi", bea_gsi, append = T, row.names = F)
+dbWriteTable(db, "bea_pop", bea_pop, append = T, row.names = F)

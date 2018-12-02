@@ -30,14 +30,15 @@ voteview_memb <- do.call(rbind, voteview_memb) %>% distinct()
 
 # ----- tidy up -----------------------------------------------------------
 
-# change classes
-voteview_info %<>% mutate_if(is.integer, as.numeric)
-voteview_cast %<>% mutate_if(is.integer, as.numeric)
-voteview_memb %<>% mutate_if(is.integer, as.numeric)
+voteview_memb %<>%
+  rename(icpsr_code = state_icpsr, state_code = state_abbrev) %>%
+  mutate(
+    state_code = if_else(state_code == "USA", "US", state_code)
+  )
 
 
 # ----- add to database ---------------------------------------------------
 
-copy_to(db, voteview_info, temporary = F, overwrite = T)
-copy_to(db, voteview_cast, temporary = F, overwrite = T)
-copy_to(db, voteview_memb, temporary = F, overwrite = T)
+dbWriteTable(db, "voteview_info", voteview_info, append = T, row.names = F)
+dbWriteTable(db, "voteview_cast", voteview_cast, append = T, row.names = F)
+dbWriteTable(db, "voteview_memb", voteview_memb, append = T, row.names = F)

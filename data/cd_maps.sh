@@ -1,26 +1,39 @@
 #!/bin/bash  
 
-# ------------------------------------------------------------------------------
-# locations
-# ------------------------------------------------------------------------------
+# ----- locations ---------------------------------------------------------
 
 # database
-db=~/Projects/congress/congress_gis.sqlite
+db=congress
 
 # destination for files
-mkdir ~/Desktop/cd_maps/
-cd ~/Desktop/cd_maps/
+temp=~/temp
 
-# ------------------------------------------------------------------------------
-# zip files
-#   http://cdmaps.polisci.ucla.edu/
-# ------------------------------------------------------------------------------
-url="http://cdmaps.polisci.ucla.edu/shp/"
 
+# ----- congressional district maps ---------------------------------------
+
+# loop
 for i in `seq 103 1 114`; do
-    f="districts"$i
-    curl -O $url$f".zip"
-    unzip $f".zip"
-    echo -e .loadshp "districtShapes/"$f "cd"$i utf-8 4269 | spatialite $db
-    rm -rf "districtShapes" $f".zip"
+
+    stem="districts"$i
+    
+    # zip file
+    curl -O "http://cdmaps.polisci.ucla.edu/shp/"$stem".zip"
+    
+    # unzip
+    unzip $stem".zip" -d $temp
+
+    # table
+    t="cd_"$i
+    echo "DROP TABLE IF EXISTS cd_$i" | psql -d $db
+
+    # file
+    f=$temp"/districtShapes/"$stem".shp"
+
+    # copy to database
+    shp2pgsql -s 4269 $f $t | psql -h localhost -d $db
+
+    # clean up
+    rm $stem".zip"
+    rm -rf $temp"/districtShapes"
+
 done

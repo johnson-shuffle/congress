@@ -1,9 +1,24 @@
 source('~/.Rprofile')
 
 .First <- function() {
-  library(stats)
-  load_tidy()
-  db     <<- src_sqlite("~/Projects/congress/congress.sqlite", create = F)
-  db_gis <<- src_sqlite("~/Projects/congress/congress_gis.sqlite", create = F)
-  db_crp <<- src_postgres('opensecrets')
+  
+  library(DBI)
+  library(RPostgreSQL)
+  
+  db <<- dbConnect(
+    "PostgreSQL",
+    host = "localhost",
+    dbname = "congress", 
+    user = "JRJ",
+    password = ""
+  )
+  
+  os <<- dbConnect(
+    "PostgreSQL",
+    host = "localhost",
+    dbname = "opensecrets", 
+    user = "JRJ",
+    password = ""
+  )
+
 }

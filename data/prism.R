@@ -20,6 +20,7 @@ library(rgdal)
 
 # ----- Weather Data ------------------------------------------------------
 
+# helper function
 prism_fun <- function(y, pb = NULL, td = NULL) {
   
   stopifnot(!is.null(td))
