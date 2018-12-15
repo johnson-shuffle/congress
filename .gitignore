@@ -9,3 +9,4 @@
 *.sqlite
 scratchwork.R
 /raw
+.Rproj.user
