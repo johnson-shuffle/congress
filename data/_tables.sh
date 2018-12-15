@@ -163,4 +163,23 @@ echo -e "DROP TABLE IF EXISTS carma;
         PRIMARY KEY (year, fips, district_code));" | psql -d $db
 
 
-# ----- casualties  -------------------------------------------------------
+# ----- casualties --------------------------------------------------------
+
+# ----- congress ----------------------------------------------------------
+
+echo -e "DROP TABLE IF EXISTS congress;
+    CREATE TABLE congress (
+        congress INTEGER,
+        session INTEGER,
+        session_start DATE,
+        session_end DATE,
+        calendar_days INTEGER,
+        legislative_days INTEGER,
+        recesses VARCHAR,
+        chamber VARCHAR,
+        start_date DATE,
+        end_date DATE,
+        PRIMARY KEY (congress, session, chamber, session_start));" | psql -d $db
+
+
+

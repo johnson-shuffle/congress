@@ -1,7 +1,7 @@
-# ----- Preample ---------------------------------------------------------
+# ----- preample ---------------------------------------------------------
 
 
-# ----- House ------------------------------------------------------------
+# ----- house ------------------------------------------------------------
 
 # page indices
 in1 <- c(1, seq(10, 110, by = 10))
@@ -42,8 +42,11 @@ hou %<>%
 
 # fill in missing congress & session numbers
 for (n in 2:nrow(hou)) {
-  if (is.na(hou$congress[n])) {hou$congress[n] <- hou$congress[n - 1]}
-  if (is.na(hou$session[n])) {hou$session[n] <- hou$session[n - 1] + 1}
+  
+  if (is.na(hou$congress[n])) { hou$congress[n] <- hou$congress[n - 1] }
+  
+  if (is.na(hou$session[n])) { hou$session[n] <- hou$session[n - 1] + 1 }
+  
 }
 
 # parse dates, create start and end dates for entire congress
@@ -58,6 +61,7 @@ hou %<>%
     session_end = str_replace_all(session_end, mon),
     session_end = parse_date(session_end, '%b %d, %Y')
   ) %>%
+  mutate_at(vars(congress, session), as.integer) %>%
   group_by(congress) %>%
   mutate(
     start_date = min(session_start),
@@ -66,7 +70,7 @@ hou %<>%
   ungroup()
 
 
-# ----- Senate -----------------------------------------------------------
+# ----- senate -----------------------------------------------------------
 
 # fetch table
 pag <- 'https://www.senate.gov/reference/Sessions/sessionDates.htm'
@@ -78,7 +82,9 @@ sen <- sen[, 1:4] %>%
 
 # fill in missing congress number
 for (n in 2:nrow(sen)) {
-  if (is.na(sen$congress[n])) {sen$congress[n] <- sen$congress[n - 1]}
+  
+  if (is.na(sen$congress[n])) { sen$congress[n] <- sen$congress[n - 1] }
+  
 }
 
 # account for footnotes
@@ -88,11 +94,13 @@ dat[, 2] <- str_sub(dat[, 2], 2, 5)
 # parse dates, create start and end dates for entire congress
 sen %<>%
   mutate(
+    session = if_else(session == "S", "9", session),
     chamber = 'Senate',
     session_start = parse_date(session_start, '%b %d, %Y'),
     session_end = str_c(dat[, 1], dat[, 2], sep = ', '),
     session_end = parse_date(session_end, '%b %d, %Y')
   ) %>%
+  mutate_at(vars(congress, session), as.integer) %>%
   group_by(congress) %>%
   mutate(
     start_date = min(session_start),
@@ -101,19 +109,19 @@ sen %<>%
   ungroup()
 
 
-# ----- Tidy Up ----------------------------------------------------------
+# ----- tidy up ----------------------------------------------------------
 
 # bind together
-congress <- plyr::rbind.fill(hou, sen)
+congress <- bind_rows(hou, sen)
 
 # change classes
-congress %<>% mutate_at(c(1, 5:6), as.numeric)
+congress %<>% mutate_at(c(1:2, 5:6), as.numeric)
 congress %<>% mutate_if(is.Date, as.character)
 
 # sort
 congress %<>% arrange(chamber, congress, session)
 
 
-# ----- Add to Database --------------------------------------------------
+# ----- add to database --------------------------------------------------
 
-copy_to(db, congress, temporary = F, overwrite = T)
+dbWriteTable(db, "congress", congress, append = T, row.names = F)
