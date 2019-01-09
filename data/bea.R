@@ -95,15 +95,15 @@ bea_gsp %<>% filter(fips != 0 & fips <= 56)
 bea_gsi %<>% 
   mutate(
     units = str_extract(description, "\\([^()]+\\)"),
-    units = str_replace(units, '\\(', ''),
-    units = str_replace(units, '\\)', '')
+    units = str_replace_all(units, '\\(|\\)', ''),
+    description = "Personal income"
   )
 
 bea_pop %<>% 
   mutate(
     units = str_extract(description, "\\([^()]+\\)"),
-    units = str_replace(units, '\\(', ''),
-    units = str_replace(units, '\\)', '')
+    units = str_replace_all(units, '\\(|\\)', ''),
+    description = "Population"
   )
 
 bea_gsp %<>% 

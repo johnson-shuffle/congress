@@ -3,18 +3,23 @@ source('~/.Rprofile')
 .First <- function() {
   
   library(DBI)
-  library(RPostgreSQL)
+  library(RPostgres)
   
-  db <<- dbConnect(
-    "PostgreSQL",
+  db_old <<- DBI::dbConnect(
+    RSQLite::SQLite(),
+    "/Volumes/32GB_BRO/congress.sqlite"
+  )
+    
+  db <<- RPostgres::dbConnect(
+    RPostgres::Postgres(),
     host = "localhost",
     dbname = "congress", 
     user = "JRJ",
     password = ""
   )
   
-  os <<- dbConnect(
-    "PostgreSQL",
+  os <<- RPostgres::dbConnect(
+    RPostgres::Postgres(),
     host = "localhost",
     dbname = "opensecrets", 
     user = "JRJ",
