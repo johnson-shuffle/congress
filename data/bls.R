@@ -18,10 +18,12 @@ bls_unempl <- dat %>%
 # average unemployment
 bls_unempl <- bls_unempl %>%
   group_by(fips, year) %>%
-  summarise(avg_unemp = mean(value)) %>%
+  summarise(avg_unempl = mean(value)) %>%
   mutate(year = as.integer(year)) %>%
   ungroup()
 
+# drop Puerto Rico
+bls_unempl %<>% filter(fips != 72)
 
 # ----- inflation --------------------------------------------------------
 

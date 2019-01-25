@@ -297,5 +297,4 @@ filter(dat, is.na(osid) & congress >= 101 & congress <= 113)
 
 # ----- add to database ---------------------------------------------------
 
-casualty <- dat
-copy_to(db, casualty, temporary = F, overwrite = T)
+dbWriteTable(db, "casualty", dat, temporary = F, overwrite = T)
