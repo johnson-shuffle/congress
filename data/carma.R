@@ -104,6 +104,12 @@ carma %<>%
     units = 'tons'
   )
 
+# add by district
+carma %<>%
+  group_by(year, fips, district_code, variable, units) %>%
+  summarise(
+    value = sum(value)
+  )
 
 # ----- add to database --------------------------------------------------
 
