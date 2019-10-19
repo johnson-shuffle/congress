@@ -1,4 +1,4 @@
-------- database ---------------------------------------------------------
+------- database ----------------------------------------------------------
 
 CREATE DATABASE congress;
 
@@ -13,11 +13,11 @@ CREATE EXTENSION postgis;
 DROP TABLE IF EXISTS states;
 CREATE TABLE states (
     fips INTEGER PRIMARY KEY,
-    state_code CHAR(2),
-    state_name VARCHAR,
+    state_code CHAR(2) UNIQUE,
+    state_name VARCHAR UNIQUE,
     census_region INTEGER,
     census_division INTEGER,
-    icpsr_code INTEGER,
+    icpsr_code INTEGER UNIQUE,
     adage_region VARCHAR,
     recs_domain INTEGER,
     recs_division INTEGER,
@@ -54,6 +54,7 @@ CREATE TABLE bea_gsi (
     series CHAR(3),
     linecode INTEGER,
     industryclassification VARCHAR,
+    description VARCHAR,
     fips INTEGER REFERENCES states(fips),
     year INTEGER,
     value bigint,
@@ -69,6 +70,7 @@ CREATE TABLE bea_pop (
     series CHAR(3),
     linecode INTEGER,
     industryclassification VARCHAR,
+    description VARCHAR,
     fips INTEGER REFERENCES states(fips),
     year INTEGER,
     value bigint,
@@ -104,11 +106,13 @@ CREATE TABLE voteview_info (
     date DATE,
     session INTEGER,
     clerk_rollnumber INTEGER,
-    mid_1 REAL,
-    mid_2 REAL,
-    spread_1 REAL,
-    spread_2 REAL,
-    log_likelihood REAL,
+    yea_count INTEGER,
+    nay_count INTEGER,
+    nominate_mid_1 REAL,
+    nominate_mid_2 REAL,
+    nominate_spread_1 REAL,
+    nominate_spread_2 REAL,
+    nominate_log_likelihood REAL,
     bill_number VARCHAR,
     vote_result VARCHAR,
     vote_desc VARCHAR,
@@ -160,12 +164,24 @@ CREATE TABLE carma (
     fips INTEGER REFERENCES states(fips),
     district_code INTEGER,
     variable CHAR(14),
-    value bigint,
+    value REAL,
     units CHAR(4),
     PRIMARY KEY (year, fips, district_code));
 
 
 ------- casualties --------------------------------------------------------
+
+DROP TABLE IF EXISTS casualty;
+CREATE TABLE casaulty (
+    name VARCHAR,
+    party VARCHAR,
+    congress INTEGER,
+    chamber VARCHAR,
+    reason VARCHAR,
+    osid CHAR(9),
+    state_code VARCHAR REFERENCES states(state_code),
+    PRIMARY KEY (name, congress));
+
 
 ------- congress ----------------------------------------------------------
 
