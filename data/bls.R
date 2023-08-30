@@ -1,5 +1,3 @@
-# ----- preample ----------------------------------------------------------
-
 
 # ----- unemployment ------------------------------------------------------
 
@@ -40,8 +38,8 @@ bls_cpi <- dat %>%
   summarise(avg_cpi = mean(value)) %>%
   mutate(year = as.integer(year)) %>%
   ungroup()
- 
- 
+
+
 # ----- add to database ---------------------------------------------------
 
 dbWriteTable(db, "bls_unempl", bls_unempl, append = T, row.names = F)

@@ -7,6 +7,7 @@
 *.Ruserdata
 *.DS_Store
 *.sqlite
+*.idea
 scratchwork.R
 /raw
 .Rproj.user

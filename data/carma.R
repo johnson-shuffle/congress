@@ -1,9 +1,7 @@
-# ----- preample ----------------------------------------------------------
-
 
 # ----- create list of districts ------------------------------------------
 
-# carma data is for 2004 & 2009 
+# carma data is for 2004 & 2009
 dis_108 <- dbGetQuery(db, "
   SELECT state_code, district_code
   FROM (
@@ -51,11 +49,11 @@ dis %<>%
 
 # helper function
 carma_fun <- function(row, data = NULL, pb = NULL) {
-  
+
   stopifnot(!is.null(data))
-  
+
   if (!is.null(pb)) pb$tick()$print()
-  
+
   # extract carma table for given fips-district pair
   pag <- 'http://carma.org/region/detail/9999'
   htm <- read_html(str_c(pag, data$fips[row], data$district_code[row]))
@@ -70,7 +68,7 @@ carma_fun <- function(row, data = NULL, pb = NULL) {
       district_code = data$district_code[row],
       year = gsub(':', '', year)
     )
-  
+
 }
 pb <- progress_estimated(nrow(dis))
 carma_list <- map(1:nrow(dis), carma_fun, data = dis, pb = pb)
