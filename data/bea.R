@@ -1,5 +1,3 @@
-# ----- preample ----------------------------------------------------------
-
 
 # ----- download and unzip ------------------------------------------------
 
@@ -63,7 +61,7 @@ gsi <- dat3 %>%
 
 # ----- gsi and population -----------------------------------------------
 
-# reshape to wide and convert value & year 
+# reshape to wide and convert value & year
 gsi <- gather(gsi, year, value, `1929`:`2016`) %>%
   mutate_at(vars(value, year), as.numeric)
 
@@ -73,7 +71,7 @@ bea_pop <- filter(gsi, LineCode == 2)
 
 
 # ----- tidy up ----------------------------------------------------------
- 
+
 # bind gsp together
 bea_gsp <- rbind(sic, naics)
 
@@ -92,21 +90,21 @@ bea_pop %<>% filter(fips != 0 & fips <= 56)
 bea_gsp %<>% filter(fips != 0 & fips <= 56)
 
 # add units
-bea_gsi %<>% 
+bea_gsi %<>%
   mutate(
     units = str_extract(description, "\\([^()]+\\)"),
     units = str_replace_all(units, '\\(|\\)', ''),
     description = "Personal income"
   )
 
-bea_pop %<>% 
+bea_pop %<>%
   mutate(
     units = str_extract(description, "\\([^()]+\\)"),
     units = str_replace_all(units, '\\(|\\)', ''),
     description = "Population"
   )
 
-bea_gsp %<>% 
+bea_gsp %<>%
   mutate(
     units = 'millions of current dollars'
   )
