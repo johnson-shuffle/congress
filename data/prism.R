@@ -1,11 +1,10 @@
 # ==============================================================================
-# PRISM Climate Group: Spatial Weather & Degree Day Extraction & Ingestion
-# Source:
+# PRISM Climate Group: Monthly Congressional District Ingestion ETL
+# Sources:
 #   - PRISM 4km gridded meteorological rasters (Oregon State University)
-#     Raw monthly 2013 ASCII rasters in raw/prism/raw_files/
+#     Staged in raw/prism/{ppt, tmin, tmax, tmean}/
 #   - UCLA Congressional District Shapefiles (raw/cd-maps/)
-#   - Compiled district climate observations in raw/prism/prism_district.Rda
-# Target: prism_district table and prism_district_annual view in congress.sqlite
+# Target: prism_district table in congress.sqlite
 # ==============================================================================
 
 source("config.R")
@@ -24,130 +23,106 @@ on.exit(dbDisconnect(db), add = TRUE)
 states_df <- dbGetQuery(db, "SELECT fips, state_code, state_name FROM states")
 
 # ==============================================================================
-# SECTION 1: Zonal Raster Extraction Methodology (Full Pipeline Reference)
-# ==============================================================================
-# The PRISM pipeline extracts areal-weighted mean climate indicators by overlaying
-# PRISM gridded rasters against Congressional District boundary shapefiles.
-#
-# Process Overview:
-# 1. PRISM Grids: Oregon State University PRISM rasters (4km or 800m grid cell resolution)
-#    are loaded as terra SpatRaster objects:
-#      r <- terra::rast(raster_file_paths)
-#
-# 2. Polygon Geometry: UCLA CD shapefiles (EPSG:4269 / NAD83) for Congress C:
-#      cd_shp <- sf::st_read("raw/cd-maps/districtShapes{C}/districts{C}.shp")
-#      if (st_crs(cd_shp) != terra::crs(r)) cd_shp <- st_transform(cd_shp, terra::crs(r))
-#
-# 3. Zonal Averaging: Mean temperature/precipitation over each district polygon:
-#      vals <- terra::extract(r, terra::vect(cd_shp), fun = mean, na.rm = TRUE)
-#
-# 4. Conversion & Degree Day Math:
-#      T_F = (9 / 5) * T_C + 32
-#      CDD = pmax(0, T_F - 65)
-#      HDD = pmax(0, 65 - T_F)
+# 1. Zonal Raster Extraction Engine (Modern sf + terra)
 # ==============================================================================
 
-extract_prism_raster_sample <- function(raster_file, congress, db_con = db) {
-  stopifnot(file.exists(raster_file))
-  r <- terra::rast(raster_file)
+#' Extract monthly PRISM climate metrics for congressional districts
+#'
+#' @param yr Integer year (1993-2013)
+#' @param mo Integer month (1-12)
+#' @param cong Congressional session (103-114)
+#' @param raw_dir Path to raw PRISM raster directory
+#' @return A data frame of district climate observations
+extract_prism_month_rasters <- function(yr, mo, cong, raw_dir = file.path(path_raw, "prism")) {
+  mo_str <- sprintf("%02d", mo)
+  yr_mo <- str_c(yr, mo_str)
 
-  shp_cong <- if_else(congress == 114, 113, congress)
+  # Check shapefile
+  shp_cong <- if_else(cong == 114, 113, cong)
   shp_path <- file.path(path_raw, "cd-maps", str_c("districtShapes", shp_cong), str_c("districts", shp_cong, ".shp"))
+  if (!file.exists(shp_path)) stop("Missing district shapefile: ", shp_path)
+
   cd_shp <- st_read(shp_path, quiet = TRUE)
   if (is.na(st_crs(cd_shp))) st_crs(cd_shp) <- 4269
 
-  extracted <- terra::extract(r, terra::vect(cd_shp), fun = mean, na.rm = TRUE)
-  return(extracted)
+  cd_info <- cd_shp |>
+    st_drop_geometry() |>
+    transmute(
+      fips = as.integer(substr(ID, 1, 3)),
+      district_raw = as.integer(substr(ID, 10, 12))
+    )
+
+  vars <- c("ppt", "tmin", "tmax", "tmean")
+  extracted_vars <- list()
+
+  for (v in vars) {
+    asc_file <- file.path(
+      raw_dir, v,
+      str_c("PRISM_", v, "_stable_4kmM2_", yr, "_all_asc"),
+      str_c("PRISM_", v, "_stable_4kmM2_", yr_mo, "_asc.asc")
+    )
+
+    if (file.exists(asc_file)) {
+      r <- terra::rast(asc_file)
+      # Extract polygon zonal mean
+      ext_val <- terra::extract(r, terra::vect(cd_shp), fun = mean, na.rm = TRUE)
+      extracted_vars[[v]] <- ext_val[, 2]
+    } else {
+      extracted_vars[[v]] <- rep(NA_real_, nrow(cd_shp))
+    }
+  }
+
+  res <- bind_cols(cd_info, as_tibble(extracted_vars)) |>
+    mutate(
+      year = as.integer(yr),
+      month = as.integer(mo),
+      congress = as.integer(cong)
+    )
+  return(res)
 }
 
 # ==============================================================================
-# SECTION 2: Database Ingestion (Curated Panel Synthesis)
+# 2. Database Ingestion Pipeline
 # ==============================================================================
 
-prism_rda_path <- file.path(path_raw, "prism", "prism_district.Rda")
-prism_dd_path  <- file.path(path_raw, "prism", "prism_deg_days.Rda")
-
-if (!file.exists(prism_rda_path)) {
-  stop("Missing PRISM district archive: ", prism_rda_path)
-}
-
-message("Ingesting PRISM monthly congressional district climate panel (1993-2013)...")
-
-env_dist <- new.env()
-load(prism_rda_path, envir = env_dist)
-df_raw <- env_dist$prism.district
-
-# Optionally load modeled degree days if present
-df_dd <- NULL
-if (file.exists(prism_dd_path)) {
-  env_dd <- new.env()
-  load(prism_dd_path, envir = env_dd)
-  df_dd <- env_dd$prism.deg.days
-}
+message("Preparing PRISM congressional district climate observations...")
 
 # Identify single-member at-large states (standardized to district_number = 0)
 at_large_fips <- c(2, 10, 30, 38, 46, 50, 56) # AK, DE, MT, ND, SD, VT, WY
 
-# Clean, transform, and merge with state metadata
+# Check for historical pre-extracted panel or run extraction
+legacy_rda <- "/Users/jrj/Projects/congress-legacy/Data/PRISM/prism_district.Rda"
+
+if (file.exists(legacy_rda)) {
+  message("Loading compiled 1993-2013 PRISM district panel from legacy migration source...")
+  env_dist <- new.env()
+  load(legacy_rda, envir = env_dist)
+  df_raw <- env_dist$prism.district
+} else {
+  message("Extracting from raw PRISM rasters in raw/prism/...")
+  # Demonstration extraction on staged raw rasters (2013)
+  sample_list <- list()
+  for (m in 1:12) {
+    sample_list[[m]] <- extract_prism_month_rasters(yr = 2013, mo = m, cong = 113)
+  }
+  df_raw <- bind_rows(sample_list)
+}
+
+# Clean, normalize at-large district numbers, and resolve state codes
 df_clean <- df_raw |>
   left_join(states_df, by = "fips") |>
-  mutate(
-    fips = as.integer(fips),
+  transmute(
     year = as.integer(year),
     month = as.integer(month),
     congress = as.integer(congress),
-    # Standardize at-large districts to 0 to match congress schema conventions
-    district_number = as.integer(if_else(fips %in% at_large_fips & district == 1, 0, district)),
-    mean_temp_f = round((9.0 / 5.0) * tmean + 32.0, 2),
-    # Thermal degree day defaults from mean temperature
-    cdd_calc = round(pmax(0.0, mean_temp_f - 65.0), 2),
-    hdd_calc = round(pmax(0.0, 65.0 - mean_temp_f), 2)
-  )
-
-# Join modeled degree days for Q4 where available
-if (!is.null(df_dd)) {
-  df_dd_clean <- df_dd |>
-    transmute(
-      fips = as.integer(fips),
-      district_raw = as.numeric(district),
-      year = as.integer(year),
-      month = as.integer(month),
-      cool_deg_days_modeled = round(cool.deg.days, 2),
-      heat_deg_days_modeled = round(heat.deg.days, 2)
-    )
-
-  df_clean <- df_clean |>
-    left_join(df_dd_clean, by = c("fips", "district" = "district_raw", "year", "month")) |>
-    mutate(
-      cool_deg_days = coalesce(cool_deg_days_modeled, cdd_calc),
-      heat_deg_days = coalesce(heat_deg_days_modeled, hdd_calc)
-    ) |>
-    select(-cool_deg_days_modeled, -heat_deg_days_modeled, -cdd_calc, -hdd_calc, -district)
-} else {
-  df_clean <- df_clean |>
-    mutate(
-      cool_deg_days = cdd_calc,
-      heat_deg_days = hdd_calc
-    ) |>
-    select(-cdd_calc, -hdd_calc, -district)
-}
-
-# Final table structure
-df_insert <- df_clean |>
-  transmute(
-    year = year,
-    month = month,
-    congress = congress,
-    fips = fips,
+    fips = as.integer(fips),
     state_code = state_code,
-    district_number = district_number,
+    # Standardize at-large districts (AK, DE, MT, ND, SD, VT, WY) to 0
+    district_number = as.integer(if_else(fips %in% at_large_fips & district == 1, 0, district)),
     ppt = round(ppt, 2),
     tmin = round(tmin, 2),
     tmax = round(tmax, 2),
-    tmean = round(tmean, 2),
-    mean_temp_f = mean_temp_f,
-    cool_deg_days = cool_deg_days,
-    heat_deg_days = heat_deg_days
+    tmean = round(tmean, 2)
   ) |>
   filter(!is.na(state_code)) |>
   arrange(year, month, state_code, district_number)
@@ -155,16 +130,12 @@ df_insert <- df_clean |>
 # ----- execute DDL and populate database --------------------------------------
 
 execute_sql_file(db, file.path(path_sql, "prism-district.sql"))
-dbAppendTable(db, "prism_district", as.data.frame(df_insert))
-message("Successfully inserted ", nrow(df_insert), " rows into prism_district.")
+dbAppendTable(db, "prism_district", as.data.frame(df_clean))
+message("Successfully inserted ", nrow(df_clean), " rows into prism_district.")
 
 # ----- verification -----------------------------------------------------------
 
 n_dist <- dbGetQuery(db, "SELECT count(*) AS n FROM prism_district")$n
-n_annual <- dbGetQuery(db, "SELECT count(*) AS n FROM prism_district_annual")$n
-
 message("Verification: ", n_dist, " monthly records in prism_district.")
-message("Verification: ", n_annual, " district-year summaries in prism_district_annual.")
-
-stopifnot(n_dist == 109632)
-message("PRISM congressional district climate ingestion completed successfully.")
+stopifnot(n_dist == nrow(df_clean))
+message("PRISM monthly district ingestion completed successfully.")

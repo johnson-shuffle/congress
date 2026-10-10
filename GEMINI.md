@@ -89,7 +89,7 @@ The following 22 tables and views are populated, verified, and active in `congre
 | `noaa_degree_days` | 420,768 | `data/noaa.R` | `raw/noaa/` / NOAA CPC FTP |
 | `noaa_state_degree_days` (view) | 1,152 | `data/noaa.R` | Analytical view on `noaa_degree_days` |
 | `prism_district` | 109,632 | `data/prism.R` | `raw/prism/` (PRISM Climate Group) |
-| `prism_district_annual` (view) | 9,136 | `data/prism.R` | Analytical view on `prism_district` |
+| `prism_district_annual` (view) | 9,073 | `analysis/prism.R` | Analytical view on `prism_district` |
 
 ---
 

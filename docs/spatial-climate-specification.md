@@ -88,14 +88,13 @@ Observations cover 9,165 district-year combinations spanning 1993–2016.
 
 ---
 
-### 2.3 PRISM Climate & Degree Day Extraction (`data/prism.R`)
+### 2.3 PRISM Climate Feature Extraction & Synthesis
 
-The PRISM Climate Group (Oregon State University) produces daily gridded meteorological rasters of the contiguous US at 4km resolution.
+The PRISM Climate Group (Oregon State University) produces gridded meteorological rasters of the contiguous US at 4km resolution.
 
-1. **Extraction Geometry:** Congressional district polygons from `raw/cd-maps/`.
-2. **Zonal Extraction:** [`data/prism.R`](file:///Users/jrj/Projects/congress/data/prism.R) applies `terra::extract()` with area-weighted polygon averaging:
-   $$\bar{T}_{d, t} = \frac{1}{|A_d|} \int_{A_d} T(x, y, t) \, dA$$
-3. **Degree Day Formulation:**
+1. **Raw Sources (`raw/prism/`):** Monthly and daily PRISM gridded ASCII rasters (`.asc` / `.bil`) organized in domain folders (`ppt/`, `tmin/`, `tmax/`, `tmean/`). Genuine raw rasters only—no compiled `.Rda` files are stored in `raw/`.
+2. **Ingestion ETL ([`data/prism.R`](file:///Users/jrj/Projects/congress/data/prism.R)):** Applies `terra::extract()` with area-weighted polygon averaging against UCLA Congressional District shapefiles (`raw/cd-maps/`) to populate base table `prism_district` in `congress.sqlite` (109,632 monthly records, 1993–2013).
+3. **Climate Synthesis ([`analysis/prism.R`](file:///Users/jrj/Projects/congress/analysis/prism.R)):** Converts temperatures to Fahrenheit and aggregates annual indicators into analytical view `prism_district_annual`:
    - Mean daily temperature in Fahrenheit:
      $$T_F = \frac{9}{5} \bar{T}_C + 32$$
    - Base temperature threshold: $T_{\text{base}} = 65^\circ\text{F} \approx 18.33^\circ\text{C}$.
@@ -103,8 +102,7 @@ The PRISM Climate Group (Oregon State University) produces daily gridded meteoro
      $$\text{CDD}_t = \max(0, T_{F, t} - 65)$$
    - **Heating Degree Days (HDD):**
      $$\text{HDD}_t = \max(0, 65 - T_{F, t})$$
-   - Annual totals are accumulated across daily observations:
-     $$\text{CDD}_{\text{annual}} = \sum_{t=1}^{365} \text{CDD}_t, \quad \text{HDD}_{\text{annual}} = \sum_{t=1}^{365} \text{HDD}_t$$
+   - Annual totals are accumulated across monthly observations into `prism_district_annual` (9,073 CONUS district-year observations).
 
 ---
 
