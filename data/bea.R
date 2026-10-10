@@ -1,117 +1,187 @@
+# ==============================================================================
+# Ingestion: Bureau of Economic Analysis (BEA)
+# Reads raw BEA datasets from raw/bea/ and populates SQLite tables:
+#   - bea_gsp: Gross State Product (1963–2014, SIC & NAICS)
+#   - bea_gsi: Gross State Personal Income (1929–2014)
+#   - bea_pop: State Population Estimates (1929–2014)
+# ==============================================================================
 
-# ----- download and unzip ------------------------------------------------
-
-td <- tempdir()
-
-pag <- 'https://www.bea.gov/regional/zip/'
-
-# naics
-download.file(str_c(pag, 'gsp/gsp_naics_all.zip'), str_c(td, '/naics.zip'))
-unzip(str_c(td, '/naics.zip'), file = 'gsp_naics_all.csv', exdir = td)
-dat1 <- read_csv(str_c(td, '/gsp_naics_all.csv'))
-
-# sic
-download.file(str_c(pag, 'gsp/gsp_sic_all.zip'), str_c(td, '/sic.zip'))
-unzip(str_c(td, '/sic.zip'), file = 'gsp_sic_all.csv', exdir = td)
-dat2 <- read_csv(str_c(td, '/gsp_sic_all.csv'))
-
-# gsi/population
-download.file(str_c(pag, '/spi.zip'), str_c(td, '/spi.zip'))
-unzip(str_c(td, '/spi.zip'), file = 'SA1_1929_2016.csv', exdir = td)
-dat3 <- read_csv(str_c(td, '/SA1_1929_2016.csv'))
-
-unlink(td)
+source("config.R")
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(DBI)
 
 
-# ----- naics 1997 to 2016 ------------------------------------------------
+# ----- gross-state-product ----------------------------------------------------
 
-# add fips (na's correspond to notes)
-naics <- dat1 %>%
+naics_file <- "raw/bea/gsp_naics_all.csv"
+sic_file <- "raw/bea/gsp_sic_all.csv"
+
+if (!file.exists(naics_file) || !file.exists(sic_file)) {
+  stop("Missing raw GSP files in raw/bea/")
+}
+
+# 1. NAICS (1997–2014)
+naics_raw <- read_csv(
+  naics_file,
+  col_types = cols(.default = "c"),
+  show_col_types = FALSE
+) |>
+  filter(!is.na(GeoFIPS) & !is.na(ComponentId) & !is.na(IndustryId)) |>
+  mutate(fips = as.integer(str_sub(GeoFIPS, 1, 2))) |>
+  filter(!is.na(fips) & fips >= 1 & fips <= 56)
+
+year_cols_naics <- names(naics_raw)[grepl("^[0-9]{4}$", names(naics_raw))]
+
+naics_long <- naics_raw |>
+  pivot_longer(
+    cols = all_of(year_cols_naics),
+    names_to = "year_str",
+    values_to = "val_str"
+  ) |>
   mutate(
-    fips = as.numeric(str_sub(GeoFIPS, 1, 2))
-    ) %>%
-  filter(!is.na(fips))
-
-# reshape to wide and convert year
-naics <- gather(naics, year, value, `1997`:`2016`) %>%
-  mutate_at(vars(value, year), as.numeric)
-
-# add fips (na's correspond to notes)
-sic <- dat2 %>%
-  mutate(
-    fips = as.numeric(str_sub(GeoFIPS, 1, 2))
-  ) %>%
-  filter(!is.na(fips)) %>%
-  select(-`1997`)
-
-
-# ----- sic 1963 to 1996 --------------------------------------------------
-
-# reshape to wide and convert year
-sic <- gather(sic, year, value, `1963`:`1996`) %>%
-  mutate_at(vars(value, year), as.numeric)
-
-# add fips (na's correspond to notes)
-gsi <- dat3 %>%
-  mutate(
-    fips = as.numeric(str_sub(GeoFIPS, 1, 2))
-  ) %>%
-  filter(!is.na(fips))
-
-
-# ----- gsi and population -----------------------------------------------
-
-# reshape to wide and convert value & year
-gsi <- gather(gsi, year, value, `1929`:`2016`) %>%
-  mutate_at(vars(value, year), as.numeric)
-
-# split into gsi and population tables
-bea_gsi <- filter(gsi, LineCode == 1)
-bea_pop <- filter(gsi, LineCode == 2)
-
-
-# ----- tidy up ----------------------------------------------------------
-
-# bind gsp together
-bea_gsp <- rbind(sic, naics)
-
-# names
-names(bea_gsi) %<>% str_replace(' ', '_') %>% tolower()
-names(bea_pop) %<>% str_replace(' ', '_') %>% tolower()
-names(bea_gsp) %<>% str_replace(' ', '_') %>% tolower()
-
-# renames
-bea_gsi %<>% rename(series = table)
-bea_pop %<>% rename(series = table)
-
-# drop national and regional totals
-bea_gsi %<>% filter(fips != 0 & fips <= 56)
-bea_pop %<>% filter(fips != 0 & fips <= 56)
-bea_gsp %<>% filter(fips != 0 & fips <= 56)
-
-# add units
-bea_gsi %<>%
-  mutate(
-    units = str_extract(description, "\\([^()]+\\)"),
-    units = str_replace_all(units, '\\(|\\)', ''),
-    description = "Personal income"
+    geo_fips = GeoFIPS,
+    geo_name = GeoName,
+    region = as.integer(Region),
+    component_id = as.integer(ComponentId),
+    component_name = ComponentName,
+    industry_id = as.integer(IndustryId),
+    industry_classification = IndustryClassification,
+    description = Description,
+    year = as.integer(year_str),
+    value = as.numeric(val_str),
+    units = "Millions of current dollars"
+  ) |>
+  select(
+    geo_fips, geo_name, region, component_id, component_name,
+    industry_id, industry_classification, description,
+    fips, year, value, units
   )
 
-bea_pop %<>%
+# 2. SIC (1963–1996; exclude 1997 overlap)
+sic_raw <- read_csv(
+  sic_file,
+  col_types = cols(.default = "c"),
+  show_col_types = FALSE
+) |>
+  filter(!is.na(FIPS) & !is.na(ComponentId) & !is.na(IndustryId)) |>
+  mutate(fips = as.integer(FIPS)) |>
+  filter(!is.na(fips) & fips >= 1 & fips <= 56)
+
+year_cols_sic <- setdiff(
+  names(sic_raw)[grepl("^gsp[0-9]{4}$", names(sic_raw))],
+  "gsp1997"
+)
+
+sic_long <- sic_raw |>
+  pivot_longer(
+    cols = all_of(year_cols_sic),
+    names_to = "year_str",
+    values_to = "val_str"
+  ) |>
   mutate(
-    units = str_extract(description, "\\([^()]+\\)"),
-    units = str_replace_all(units, '\\(|\\)', ''),
-    description = "Population"
+    geo_fips = sprintf("%05d", fips * 1000),
+    geo_name = GeoName,
+    region = as.integer(Region),
+    component_id = as.integer(ComponentId),
+    component_name = ComponentName,
+    industry_id = as.integer(IndustryId),
+    industry_classification = "SIC",
+    description = IndustryName,
+    year = as.integer(gsub("gsp", "", year_str)),
+    value = as.numeric(val_str),
+    units = "Millions of current dollars"
+  ) |>
+  select(
+    geo_fips, geo_name, region, component_id, component_name,
+    industry_id, industry_classification, description,
+    fips, year, value, units
   )
 
-bea_gsp %<>%
+bea_gsp <- bind_rows(sic_long, naics_long) |>
+  filter(!is.na(year) & !is.na(fips) & !is.na(industry_id) & !is.na(component_id)) |>
+  distinct(year, fips, industry_id, component_id, .keep_all = TRUE)
+
+
+# ----- personal-income-and-population -----------------------------------------
+
+sa1_file <- "raw/bea/SA1_1929_2014.csv"
+
+if (!file.exists(sa1_file)) {
+  stop("Missing raw SA1 file in raw/bea/: ", sa1_file)
+}
+
+sa1_raw <- read_csv(
+  sa1_file,
+  col_types = cols(.default = "c"),
+  show_col_types = FALSE
+) |>
+  filter(!is.na(GeoFIPS) & !is.na(LineCode)) |>
+  mutate(fips = as.integer(str_sub(GeoFIPS, 1, 2))) |>
+  filter(!is.na(fips) & fips >= 1 & fips <= 56)
+
+year_cols_sa1 <- names(sa1_raw)[grepl("^[0-9]{4}$", names(sa1_raw))]
+
+sa1_long <- sa1_raw |>
+  pivot_longer(
+    cols = all_of(year_cols_sa1),
+    names_to = "year_str",
+    values_to = "val_str"
+  ) |>
   mutate(
-    units = 'millions of current dollars'
+    geo_fips = GeoFIPS,
+    geo_name = GeoName,
+    region = as.integer(Region),
+    series = Table,
+    line_code = as.integer(LineCode),
+    industry_classification = IndustryClassification,
+    description = Description,
+    year = as.integer(year_str),
+    value = as.numeric(val_str)
   )
 
+# Personal income (LineCode 1)
+bea_gsi <- sa1_long |>
+  filter(line_code == 1) |>
+  mutate(
+    description = "Personal income",
+    units = "thousands of dollars"
+  ) |>
+  select(
+    geo_fips, geo_name, region, series, line_code,
+    industry_classification, description, fips, year, value, units
+  ) |>
+  distinct(year, fips, .keep_all = TRUE)
 
-# ----- add to database --------------------------------------------------
+# Population (LineCode 2)
+bea_pop <- sa1_long |>
+  filter(line_code == 2) |>
+  mutate(
+    description = "Population",
+    units = "persons"
+  ) |>
+  select(
+    geo_fips, geo_name, region, series, line_code,
+    industry_classification, description, fips, year, value, units
+  ) |>
+  distinct(year, fips, .keep_all = TRUE)
 
-dbWriteTable(db, "bea_gsp", bea_gsp, append = T, row.names = F)
-dbWriteTable(db, "bea_gsi", bea_gsi, append = T, row.names = F)
-dbWriteTable(db, "bea_pop", bea_pop, append = T, row.names = F)
+
+# ----- insert-to-database -----------------------------------------------------
+
+db <- get_db()
+
+init_table(db, "bea_gsp")
+dbWriteTable(db, "bea_gsp", bea_gsp, append = TRUE)
+
+init_table(db, "bea_gsi")
+dbWriteTable(db, "bea_gsi", bea_gsi, append = TRUE)
+
+init_table(db, "bea_pop")
+dbWriteTable(db, "bea_pop", bea_pop, append = TRUE)
+
+message("Successfully populated bea_gsp: ", dbGetQuery(db, "SELECT count(*) FROM bea_gsp")[[1]], " rows.")
+message("Successfully populated bea_gsi: ", dbGetQuery(db, "SELECT count(*) FROM bea_gsi")[[1]], " rows.")
+message("Successfully populated bea_pop: ", dbGetQuery(db, "SELECT count(*) FROM bea_pop")[[1]], " rows.")

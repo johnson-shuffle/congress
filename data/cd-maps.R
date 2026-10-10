@@ -1,6 +1,10 @@
 # ----- Preample ---------------------------------------------------------
 
+source("config.R")
+
 td <- tempdir()
+raw_cd_dir <- file.path(path_raw, "cd-maps")
+dir.create(raw_cd_dir, showWarnings = FALSE, recursive = TRUE)
 
 
 # ----- Zip Files --------------------------------------------------------
@@ -24,6 +28,7 @@ cd_maps_fun <- function(congress, dir = NULL) {
 cd_maps <- map(103:114, cd_maps_fun, dir = td)
 
 
-# ----- Add to Database --------------------------------------------------
+# ----- Save Output ------------------------------------------------------
 
-save(cd_maps, file = '~/GoogleDrive/Projects/congress/cd_maps.Rda')
+# Processed with sf in Tier 2 pipeline
+

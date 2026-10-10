@@ -7,7 +7,9 @@
 db=opensecrets
 
 # zip files
-cd /Users/JRJ/Desktop/opensecrets/
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+raw_os="$REPO_DIR/raw/opensecrets"
+cd "$raw_os"
 
 
 # ----- # create empty tables in the database -----------------------------

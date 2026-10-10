@@ -1,114 +1,126 @@
+# ==============================================================================
+# CARMA: Carbon Monitoring for Action (Power Plant & District Emissions)
+# Source: raw/carma/CARMAv30_PowerUser.zip (Region.csv and Plant.csv)
+# ==============================================================================
 
-# ----- create list of districts ------------------------------------------
+source("config.R")
+library(readr)
+library(dplyr)
+library(stringr)
 
-# carma data is for 2004 & 2009
-dis_108 <- dbGetQuery(db, "
-  SELECT state_code, district_code
-  FROM (
-    SELECT DISTINCT congress, state_code, district_code
-    FROM voteview_memb
-    WHERE congress = 108 AND chamber = 'House'
-  ) AS temp
-  ")
+# ----- load data & database ---------------------------------------------------
 
-dis_111 <- dbGetQuery(db, "
-  SELECT state_code, district_code
-  FROM (
-    SELECT DISTINCT congress, state_code, district_code
-    FROM voteview_memb
-    WHERE congress = 108 AND chamber = 'House'
-  ) AS temp
-  ")
+db <- get_db()
+on.exit(dbDisconnect(db), add = TRUE)
 
-# check for differences in districts
-all.equal(dis_108, dis_111)
-rm(dis_108, dis_111)
+states <- dbGetQuery(db, "SELECT fips, state_code, state_name FROM states")
 
-# get districts with fips
-dis <- dbGetQuery(db, "
-  SELECT fips, temp.state_code, district_code, at_large
-  FROM (
-    SELECT DISTINCT congress, state_code, district_code
-    FROM voteview_memb
-    WHERE congress = 108 AND chamber = 'House'
-  ) AS temp
-  LEFT JOIN states ON temp.state_code = states.state_code
-  ")
-
-# pad fips / district_code, correct for single district states
-dis %<>%
-  mutate(
-    fips = str_pad(fips, 2, 'left', '0'),
-    district_code = str_pad(district_code, 2, 'left', '0'),
-    district_code = if_else(at_large, '00', district_code)
-  ) %>%
-  select(-at_large)
-
-
-# ----- district emissions ------------------------------------------------
-
-# helper function
-carma_fun <- function(row, data = NULL, pb = NULL) {
-
-  stopifnot(!is.null(data))
-
-  if (!is.null(pb)) pb$tick()$print()
-
-  # extract carma table for given fips-district pair
-  pag <- 'http://carma.org/region/detail/9999'
-  htm <- read_html(str_c(pag, data$fips[row], data$district_code[row]))
-  dat <- html_table(htm)
-  dat <- dat[[2]]
-  names(dat)[1] <- 'year'
-
-  # add district and drop ':' from year
-  dat %>%
-    mutate(
-      fips = data$fips[row],
-      district_code = data$district_code[row],
-      year = gsub(':', '', year)
-    )
-
+zip_path <- file.path(path_raw, "carma", "CARMAv30_PowerUser.zip")
+if (!file.exists(zip_path)) {
+  stop("Missing CARMA raw archive: ", zip_path)
 }
-pb <- progress_estimated(nrow(dis))
-carma_list <- map(1:nrow(dis), carma_fun, data = dis, pb = pb)
 
+# ----- process congressional districts ----------------------------------------
 
-# ----- tidy up -----------------------------------------------------------
+message("Ingesting CARMA congressional district emissions...")
+regions <- read_csv(unz(zip_path, "Region.csv"), col_types = cols())
 
-# bind togther
-carma <- do.call(rbind, carma_list)
-
-# change classes
-carma %<>%
-  filter(year != 'Future') %>%
-  mutate_at(
-    c(2:4),
-    str_remove_all
-  ) %>%
-  mutate_at(
-    c(1, 9, 10),
-    as.integer
-  ) %>%
-  mutate_if(is.character, as.integer)
-
-# reshape
-carma <- gather(carma, variable, value, 2:8)
-
-# units
-carma %<>%
+carma_district <- regions |>
+  filter(region_type == "congressperson") |>
   mutate(
-    variable = 'carbon dioxide',
-    units = 'tons'
-  )
+    id_str = as.character(region_id),
+    fips = as.integer(substr(id_str, 5, 6)),
+    district_code = as.integer(substr(id_str, 7, 8))
+  ) |>
+  left_join(select(states, fips, state_code), by = "fips") |>
+  transmute(
+    fips,
+    state_code,
+    district_code,
+    representative = region_name,
+    plant_count = as.integer(plantcount),
+    carbon_2004 = carbon_past,
+    carbon_2009 = carbon_present,
+    carbon_future = carbon_future,
+    energy_2004 = energy_past,
+    energy_2009 = energy_present,
+    energy_future = energy_future,
+    intensity_2004 = intensity_past,
+    intensity_2009 = intensity_present,
+    intensity_future = intensity_future,
+    share_fossil_2004 = share_fos_past,
+    share_fossil_2009 = share_fos_present,
+    share_hydro_2004 = share_hyd_past,
+    share_hydro_2009 = share_hyd_present,
+    share_nuclear_2004 = share_nuc_past,
+    share_nuclear_2009 = share_nuc_present,
+    share_renewable_2004 = share_ren_past,
+    share_renewable_2009 = share_ren_present
+  ) |>
+  arrange(fips, district_code)
 
-# add by district
-carma %<>%
-  group_by(year, fips, district_code, variable, units) %>%
-  summarise(
-    value = sum(value)
-  )
+# Execute DDL
+execute_sql_file(db, file.path(path_sql, "carma-district.sql"))
 
-# ----- add to database --------------------------------------------------
+# Insert into carma_district
+dbAppendTable(db, "carma_district", as.data.frame(carma_district))
+message("Inserted ", nrow(carma_district), " rows into carma_district")
 
-dbWriteTable(db, 'carma', carma, append = T, row.names = F)
+# ----- process power plants ---------------------------------------------------
+
+message("Ingesting CARMA power plant emissions...")
+plants <- read_csv(unz(zip_path, "Plant.csv"), col_types = cols())
+
+carma_plants <- plants |>
+  filter(iso3 == "USA") |>
+  mutate(
+    clean_region = case_when(
+      region == "Washington, D.C." ~ "District of Columbia",
+      TRUE ~ region
+    )
+  ) |>
+  left_join(select(states, state_name, state_code), by = c("clean_region" = "state_name")) |>
+  transmute(
+    plant_id = as.integer(plant_id),
+    plant_name = plant,
+    company = company,
+    city = city,
+    county = county,
+    state_code = state_code,
+    district_code = as.integer(congdist),
+    latitude = latitude,
+    longitude = longitude,
+    carbon_2004 = carbon_past,
+    carbon_2009 = carbon_present,
+    carbon_future = carbon_future,
+    energy_2004 = energy_past,
+    energy_2009 = energy_present,
+    energy_future = energy_future,
+    intensity_2004 = intensity_past,
+    intensity_2009 = intensity_present,
+    intensity_future = intensity_future
+  ) |>
+  arrange(plant_id)
+
+# Execute DDL
+execute_sql_file(db, file.path(path_sql, "carma-plants.sql"))
+
+# Insert into carma_plants
+dbAppendTable(db, "carma_plants", as.data.frame(carma_plants))
+message("Inserted ", nrow(carma_plants), " rows into carma_plants")
+
+# ----- sanity checks ----------------------------------------------------------
+
+n_dist <- dbGetQuery(db, "SELECT count(*) AS n FROM carma_district")$n
+n_view <- dbGetQuery(db, "SELECT count(*) AS n FROM carma")$n
+n_plants <- dbGetQuery(db, "SELECT count(*) AS n FROM carma_plants")$n
+
+message("Verification:")
+message("  carma_district: ", n_dist, " districts")
+message("  carma (view):   ", n_view, " observations (2004 + 2009)")
+message("  carma_plants:   ", n_plants, " US power plants")
+
+stopifnot(n_dist == 435)
+stopifnot(n_view == 870)
+stopifnot(n_plants == 8690)
+message("CARMA ingestion completed successfully.")

@@ -1,258 +1,324 @@
-# ----- Preample ----------------------------------------------------------
+# ==============================================================================
+# Ingestion: Congressional Quarterly (CQ) Elections
+# Reads raw CQ returns from raw/cq/ and populates `cq_elections` in SQLite.
+# Covers House, Senate, President, and Governor races (1988–2016).
+# ==============================================================================
 
-# helper function for reading cq csv files
-cq_fun <- function(file, office = NULL) {
-  dat <- read_csv(file, skip = 2) %>% filter(Office == office)
-  if (office == "Senate") {
-    dat$raceYear <- as.numeric(str_extract(file, "\\d{4}"))
-  }
-  return(dat)
+source("config.R")
+library(readr)
+library(dplyr)
+library(purrr)
+library(stringr)
+library(DBI)
+
+
+# ----- helper-functions -------------------------------------------------------
+
+clean_num <- function(x) {
+  if (is.null(x)) return(NA_integer_)
+  x <- gsub("[^0-9]", "", as.character(x))
+  as.integer(ifelse(x == "", NA, x))
+}
+
+clean_pct <- function(x) {
+  if (is.null(x)) return(NA_real_)
+  x <- gsub("[^0-9.]", "", as.character(x))
+  as.numeric(ifelse(x == "", NA, x))
+}
+
+clean_text <- function(x) {
+  if (is.null(x)) return(NA_character_)
+  x <- str_trim(as.character(x))
+  ifelse(x %in% c("", "N/A", "NULL", "NA"), NA_character_, x)
 }
 
 
-# ----- House -------------------------------------------------------------
+# ----- load-state-lookup ------------------------------------------------------
 
-fls <- list.files(path = "./raw", pattern = "hou", full.names = T)
-raw <- map_dfr(fls, cq_fun, office = "House")
-
-# blank lines, runoffs, and special elections
-hou_dupes <- duplicates(raw, c("State", "Area", "raceYear"))
-hou %<>%
-  mutate(Type = "General") %>%
-  unite(id, State, AreaNumber, raceYear) %>%
-  filter(id != "Louisiana_1_2014" | RepVotes != "N/A") %>%  # blank line
-  filter(id != "Louisiana_2_2014" | RepVotes != "N/A") %>%  # blank line
-  filter(id != "Louisiana_3_2014" | RepVotes != "N/A") %>%  # blank line
-  filter(id != "Louisiana_4_2014" | RepVotes != "N/A") %>%  # blank line
-  within({
-    Type[id == "Florida_19_2014" & RepVotes == "66,922"] <- "Special"
-    Type[id == "Louisiana_2_2006" & DemVotes == "35,153"] <- "Runoff"
-    Type[id == "Louisiana_3_2012" & RepVotes == "58,820"] <- "Runoff"
-    Type[id == "Louisiana_5_2014" & RepVotes == "134,616"] <- "Runoff"
-    Type[id == "Louisiana_6_2014" & RepVotes == "139,209"] <- "Runoff"
-    Type[id == "Texas_23_2006" & RepVotes == "32,217"] <- "Runoff"
-  }) %>%
-  separate(id, into = c("State", "AreaNumber", "raceYear"), sep = "_")
-
-# extra candidates
-ext <- hou[grepl("The other vote was:", hou$RaceNotes), ]
-ext$RaceNotes <- str_extract(ext$RaceNotes, "(The other vote was:)[:print:]+")
-ext$RaceNotes %<>% str_replace("The other vote was:", "")
-ext <- cbind(
-  select(ext, State, Area, raceYear),
-  as_tibble(str_split(ext$RaceNotes, ";", simplify = T))
-)
-ext %<>% gather(key, value, -1:-3)
-ext %<>% filter(!is.na(value))
-ext <- ext[grepl("The other vote", ext$value), ]
-
-p1 <- "(?<=\\().*?(?=\\))"
-n1 <- "([A-z]+\\-[A-z]+, [A-z]+\\s[A-Z]\\.)"
-n2 <- "([A-z]+\\-[A-z]+, [A-z]+)"
-n3 <- "([A-z]+\\-[A-z]+)"
-p2 <- str_c(n1, n2, n3, sep = "|")
-p3 <- "(\\d+)|(\\d+,\\d+)"
-
-# missing elections (435 each cycle)
-#   1996: LA districts 1, 2, 3, 4, 6
-#   2006: LA districts 2 (has two lines)
-#   2014: LA districts 2
-table(filter(hou, Type == "General")$raceYear)
-
-# convert votes to numeric
-hou %<>% mutate_at(vars(contains("Votes")), str_replace, ",", "")
-hou %<>% mutate_at(vars(contains("Votes")), as.numeric)
-
-# number of votes cast
-hou$AllVotes <- rowSums(hou[str_subset(names(hou), "[^y]Votes$")], na.rm = T)
-hou$AllPercent  <- rowSums(hou[str_subset(names(hou), "Percent$")], na.rm = T)
-
-# fix uncontested elections
-hou_zero <- filter(hou, AllPercent < 100)
-hou %<>%
-  unite(id, State, Area, raceYear) %>%
-  within({
-    DemVotesMajorPercent[id == "Arkansas_District 4_2004"] <- 100
-    RepVotesMajorPercent[id == "Florida_District 7_2004"] <- 100
-    RepVotesMajorPercent[id == "Florida_District 25_2004"] <- 100
-    RepVotesMajorPercent[id == "Florida_District 24_2004"] <- 100
-    DemVotesMajorPercent[id == "Florida_District 23_2004"] <- 100
-  }) %>%
-  within({
-    DemCandidate[id == "Florida_District 19_2004"] <- "Wexler, Robert"
-    DemStatus[id == "Florida_District 19_2004"] <- "Incumbent"
-    DemVotesMajorPercent[id == "Florida_District 19_2004"] <- 100
-    RepCandidate[id == "Florida_District 15_2012"] <- "Ross, Dennis A."
-    RepStatus[id == "Florida_District 15_2012"] <- "Incumbent"
-    RepVotesMajorPercent[id == "Florida_District 15_2012"] <- 100
-    DemCandidate[id == "Florida_District 24_2012"] <- "Wilson, Frederica S."
-    DemStatus[id == "Florida_District 24_2012"] <- "Incumbent"
-    DemVotesMajorPercent[id == "Florida_District 24_2012"] <- 100
-  }) %>%
-  separate(id, into = c("State", "Area", "raceYear"), sep = "_")
-
-# two incumbents?? (all but one are result of redistricting)
-hou_incb <- as.numeric(hou$RepStatus == "Incumbent")
-hou_incb <- hou_incb + as.numeric(hou$DemStatus == "Incumbent")
-hou_incb <- hou_incb + as.numeric(hou$ThirdStatus == "Incumbent")
-hou_incb <- hou[hou_incb >= 2, ]
-hou %<>%
-  unite(id, State, Area, raceYear) %>%
-  within({
-    RepStatus[id == "California_District 12_2004"] <- "Challenger"
-  }) %>%
-  separate(id, into = c("State", "Area", "raceYear"), sep = "_")
-
-# bind by candidate
-hou %<>% rename(ThirdVotesMajorPercent = ThirdVotesTotalPercent)
-cand_attr <- c("Candidate", "Status", "VotesMajorPercent")
-D <- hou[c("raceYear", "State", "Area", "AllVotes", str_c("Dem", cand_attr))]
-R <- hou[c("raceYear", "State", "Area", "AllVotes", str_c("Rep", cand_attr))]
-X <- hou[c("raceYear", "State", "Area", "AllVotes", str_c("Third", cand_attr))]
-names(D)[5:7] <- cand_attr
-names(R)[5:7] <- cand_attr
-names(X)[5:7] <- cand_attr
-
-# rank by percent
-dat_hou <- rbind(D, R, X) %>%
-  group_by(raceYear, State, Area) %>%
-  mutate(Rank = rank(desc(VotesMajorPercent), ties.method = "first")) %>%
-  ungroup()
-
-# join by 1st and 2nd
-dat_hou <- left_join(
-  select(filter(dat_hou, Rank == 1), -Rank),
-  select(filter(dat_hou, Rank == 2), -Rank, -AllVotes),
-  by = c("raceYear", "State", "Area"),
-  suffix = c("_1", "_2")
-)
+db <- get_db()
+states_df <- dbGetQuery(db, "SELECT state_code, state_name FROM states")
+st_map <- setNames(states_df$state_code, states_df$state_name)
 
 
-# ----- Senate ------------------------------------------------------------
-fls <- list.files(path = "./raw", pattern = "sen", full.names = T)
-sen <- map_dfr(fls, cq_fun, office = "Senate")
+# ----- house ------------------------------------------------------------------
 
-# duplicates
-sen_dupes <- duplicates(sen, c("Area", "raceYear"))
+hou_fls <- list.files("raw/cq", pattern = "^hou_.*[.]csv$", full.names = TRUE)
 
-# fix runoffs and special elections
-sen %<>%
-  unite(id, Area, raceYear) %>%
-  filter(id != "Georgia_1992" | RepVotes != "1,073,282") %>%      # 1st round
-  filter(id != "Georgia_2008" | RepVotes != "1,867,097") %>%      # 1st round
-  separate(id, into = c("State", "raceYear"), sep = "_")
+hou_raw <- map_dfr(hou_fls, function(f) {
+  read_csv(f, skip = 2, col_types = cols(.default = "c"), show_col_types = FALSE) |>
+    filter(Office == "House")
+})
 
-# convert votes to numeric
-sen %<>% mutate_at(vars(contains("Votes")), str_replace, ",", "")
-sen %<>% mutate_at(vars(contains("Votes")), as.numeric)
+# Drop blank lines in LA 2014 where all candidate and vote fields are N/A
+hou <- hou_raw |>
+  filter(!(State == "Louisiana" & raceYear == "2014" & RepVotes == "N/A" & DemVotes == "N/A"))
 
-# number of votes cast
-sen$AllVotes <- rowSums(sen[str_subset(names(sen), "[^y]Votes$")], na.rm = T)
-
-# bind by candidate
-sen %<>% rename(ThirdVotesMajorPercent = ThirdVotesTotalPercent)
-cand_attr <- c("Candidate", "Status", "VotesMajorPercent")
-D <- sen[c("raceYear", "State", "AllVotes", str_c("Dem", cand_attr))]
-R <- sen[c("raceYear", "State", "AllVotes", str_c("Rep", cand_attr))]
-X <- sen[c("raceYear", "State", "AllVotes", str_c("Third", cand_attr))]
-names(D)[4:6] <- cand_attr
-names(R)[4:6] <- cand_attr
-names(X)[4:6] <- cand_attr
-
-# rank by percent
-dat_sen <- rbind(D, R, X) %>%
-  group_by(raceYear, State) %>%
-  mutate(Rank = rank(desc(VotesMajorPercent), ties.method = "first"))
-
-# join by 1st and 2nd
-dat_sen <- left_join(
-  select(filter(dat_sen, Rank == 1), -Rank),
-  select(filter(dat_sen, Rank == 2), -Rank, -AllVotes),
-  by = c("raceYear", "State"),
-  suffix = c("_one", "_two")
-)
-
-
-# ----- President ---------------------------------------------------------
-
-cq.prez <- NULL
-for (i in seq(1988, 2012, by = 4)) {
-  dat <- read.csv(paste0(d$cq, "raw_files/prez_", i, ".csv"), skip = 2)
-  dat <- dat %>% subset(Office == "President")
-  cq.prez <- rbind(cq.prez, dat) ; rm(dat)
-}
-
-cq.prez <- cq.prez %>%
-  merge(states[c("statedscr", "statecode", "fips")],
-        by.x = "Area", by.y = "statedscr")
-
-# Governors
-cq.gov <- NULL
-for (i in seq(1988, 2012, by = 4)) {
-
-  dat <- read.csv(paste0(d$cq, "raw_files/gov_", i, ".csv"), skip = 2)
-
-  dat <- dat %>% subset(Office == "Governor")
-
-  cq.gov <- rbind(cq.gov, dat) ; rm(dat)
-
-}
-
-cq.gov <- cq.gov %>%
-  merge(states[c("statedscr", "statecode", "fips")],
-        by.x = "Area", by.y = "statedscr")
-
-#-------------------------------------------------------------------------------
-# Save general results
-#-------------------------------------------------------------------------------
-save(list = paste("cq", c("hou", "sen", "prez", "gov"), sep = "."),
-     file = paste0(d$cq, "cq_elections.Rda"))
-
-#-------------------------------------------------------------------------------
-# Add GovTrack id"s
-#-------------------------------------------------------------------------------
-
-# House
-load(paste0(d$legis, "names_house.Rda"))
-
-hou <- hou %>%
-  subset(occupancy <= 1 & means == 1) %>%
+hou <- hou |>
   mutate(
-    cycle = factor(congress, labels = seq(1992, 2014, by = 2)),
-    cycle = as.character(cycle)
-  ) %>%
-  select(congress, cycle, statecode, district, govtrackid)
-
-margins.hou <- hou %>%
-  merge(dat.hou, by = c("cycle", "statecode", "district"), all.x = T) %>%
-  mutate(
-    margin = replace(margin, is.na(margin), 1)
+    cycle = as.integer(raceYear),
+    office = "House",
+    state_code = st_map[State],
+    district_number = ifelse(Area == "At Large", 0L, as.integer(gsub("[^0-9]", "", Area))),
+    election_type = "General"
   )
 
-dat.hou[!paste(dat.hou$firstname, dat.hou$lastname, dat.hou$cycle) %in%
-        paste(margins.hou$firstname, margins.hou$lastname, margins.hou$cycle), ]
-
-# Senate
-load(paste0(d$legis, "names_senate.Rda"))
-
-sen <- sen %>%
-  subset(occupancy <= 1 & means == 1) %>%
+# Tag runoff elections
+hou <- hou |>
   mutate(
-    cycle = factor(congress, labels = seq(1992, 2014, by = 2)),
-    cycle = as.character(cycle)
-  ) %>%
-  select(congress, cycle, statecode, class, govtrackid)
+    election_type = case_when(
+      state_code == "LA" & district_number == 2 & cycle == 2006 & DemVotes == "35,153" ~ "Runoff",
+      state_code == "LA" & district_number == 3 & cycle == 2012 & RepVotes == "58,820" ~ "Runoff",
+      state_code == "LA" & district_number == 5 & cycle == 2014 & RepVotes == "134,616" ~ "Runoff",
+      state_code == "LA" & district_number == 6 & cycle == 2014 & RepVotes == "139,209" ~ "Runoff",
+      state_code == "LA" & district_number == 3 & cycle == 2016 & RepVotes == "77,671" ~ "Runoff",
+      state_code == "LA" & district_number == 4 & cycle == 2016 & RepVotes == "87,370" ~ "Runoff",
+      state_code == "TX" & district_number == 23 & cycle == 2006 & RepVotes == "32,217" ~ "Runoff",
+      TRUE ~ election_type
+    )
+  )
 
-margins.sen <- sen %>%
-  merge(dat.sen, by = c("cycle", "statecode", "class"), all.x = T) %>%
-  subset(!is.na(margin))
+# Merge split Democratic and Republican general election lines for Louisiana 2006 District 2
+la_gen_d <- hou |>
+  filter(state_code == "LA" & district_number == 2 & cycle == 2006 & election_type == "General" & DemVotes == "28,283")
+la_gen_r <- hou |>
+  filter(state_code == "LA" & district_number == 2 & cycle == 2006 & election_type == "General" & RepVotes == "12,511")
 
-dat.sen[!paste(dat.sen$firstname, dat.sen$lastname, dat.sen$cycle) %in%
-        paste(margins.sen$firstname, margins.sen$lastname, margins.sen$cycle), ]
+hou <- hou |>
+  filter(!(state_code == "LA" & district_number == 2 & cycle == 2006 & election_type == "General"))
 
-#-------------------------------------------------------------------------------
-# Save
-#-------------------------------------------------------------------------------
-save(margins.hou, file = paste0(d$cq, "margins_house.Rda"))
+if (nrow(la_gen_d) > 0 && nrow(la_gen_r) > 0) {
+  merged_la <- la_gen_d[1, ]
+  merged_la$RepCandidate <- la_gen_r$RepCandidate[1]
+  merged_la$RepStatus <- la_gen_r$RepStatus[1]
+  merged_la$RepVotes <- la_gen_r$RepVotes[1]
+  merged_la$RepVotesMajorPercent <- "30.68"
+  merged_la$DemVotesMajorPercent <- "69.32"
+  hou <- bind_rows(hou, merged_la)
+}
 
-save(margins.sen, file = paste0(d$cq, "margins_senate.Rda"))
+# Fix uncontested races and miscoded fields
+hou <- hou |>
+  mutate(
+    DemCandidate = case_when(
+      state_code == "FL" & district_number == 19 & cycle == 2004 ~ "Wexler, Robert",
+      state_code == "FL" & district_number == 24 & cycle == 2012 ~ "Wilson, Frederica S.",
+      state_code == "FL" & district_number == 24 & cycle == 2016 ~ "Wilson, Frederica S.",
+      TRUE ~ DemCandidate
+    ),
+    DemStatus = case_when(
+      state_code == "FL" & district_number == 19 & cycle == 2004 ~ "Incumbent",
+      state_code == "FL" & district_number == 24 & cycle == 2012 ~ "Incumbent",
+      state_code == "FL" & district_number == 24 & cycle == 2016 ~ "Incumbent",
+      TRUE ~ DemStatus
+    ),
+    DemVotesMajorPercent = case_when(
+      state_code == "FL" & district_number == 19 & cycle == 2004 ~ "100.00",
+      state_code == "FL" & district_number == 24 & cycle == 2012 ~ "100.00",
+      state_code == "FL" & district_number == 24 & cycle == 2016 ~ "100.00",
+      state_code == "FL" & district_number == 23 & cycle == 2004 ~ "100.00",
+      state_code == "AR" & district_number == 4 & cycle == 2004 ~ "100.00",
+      TRUE ~ DemVotesMajorPercent
+    ),
+    RepCandidate = case_when(
+      state_code == "FL" & district_number == 15 & cycle == 2012 ~ "Ross, Dennis A.",
+      state_code == "OK" & district_number == 1 & cycle == 2016 ~ "Bridenstine, Jim",
+      TRUE ~ RepCandidate
+    ),
+    RepStatus = case_when(
+      state_code == "FL" & district_number == 15 & cycle == 2012 ~ "Incumbent",
+      state_code == "OK" & district_number == 1 & cycle == 2016 ~ "Incumbent",
+      state_code == "CA" & district_number == 12 & cycle == 2004 ~ "Challenger",
+      TRUE ~ RepStatus
+    ),
+    RepVotesMajorPercent = case_when(
+      state_code == "FL" & district_number == 15 & cycle == 2012 ~ "100.00",
+      state_code == "OK" & district_number == 1 & cycle == 2016 ~ "100.00",
+      state_code == "FL" & district_number == 7 & cycle == 2004 ~ "100.00",
+      state_code == "FL" & district_number == 24 & cycle == 2004 ~ "100.00",
+      state_code == "FL" & district_number == 25 & cycle == 2004 ~ "100.00",
+      TRUE ~ RepVotesMajorPercent
+    )
+  )
+
+hou_clean <- tibble(
+  cycle = hou$cycle,
+  office = hou$office,
+  state_code = hou$state_code,
+  district_number = hou$district_number,
+  election_type = hou$election_type,
+  rep_candidate = clean_text(hou$RepCandidate),
+  rep_status = clean_text(hou$RepStatus),
+  rep_votes = clean_num(hou$RepVotes),
+  rep_pct = clean_pct(hou$RepVotesMajorPercent),
+  dem_candidate = clean_text(hou$DemCandidate),
+  dem_status = clean_text(hou$DemStatus),
+  dem_votes = clean_num(hou$DemVotes),
+  dem_pct = clean_pct(hou$DemVotesMajorPercent),
+  third_party = clean_text(hou$ThirdParty),
+  third_candidate = clean_text(hou$ThirdCandidate),
+  third_status = clean_text(hou$ThirdStatus),
+  third_votes = clean_num(hou$ThirdVotes),
+  third_pct = clean_pct(hou$ThirdVotesTotalPercent),
+  other_votes = clean_num(hou$OtherVotes),
+  plurality_party = clean_text(hou$PluralityParty),
+  plurality_votes = clean_num(hou$PluralityVotes)
+)
+
+
+# ----- senate -----------------------------------------------------------------
+
+sen_fls <- list.files("raw/cq", pattern = "^sen_.*[.]csv$", full.names = TRUE)
+
+sen_raw <- map_dfr(sen_fls, function(f) {
+  d <- read_csv(f, skip = 2, col_types = cols(.default = "c"), show_col_types = FALSE) |>
+    filter(Office == "Senate")
+  d$cycle <- as.integer(str_extract(basename(f), "[0-9]{4}"))
+  d
+})
+
+sen <- sen_raw |>
+  mutate(
+    office = "Senate",
+    state_code = st_map[Area],
+    district_number = 0L,
+    election_type = "General"
+  ) |>
+  mutate(
+    election_type = case_when(
+      state_code == "GA" & cycle == 1992 & RepVotes == "635,114" ~ "Runoff",
+      state_code == "GA" & cycle == 2008 & RepVotes == "1,228,033" ~ "Runoff",
+      state_code == "LA" & cycle == 2014 & RepVotes == "712,379" ~ "Runoff",
+      state_code == "LA" & cycle == 2016 & RepVotes == "536,191" ~ "Runoff",
+      TRUE ~ election_type
+    )
+  )
+
+sen_clean <- tibble(
+  cycle = sen$cycle,
+  office = sen$office,
+  state_code = sen$state_code,
+  district_number = sen$district_number,
+  election_type = sen$election_type,
+  rep_candidate = clean_text(sen$RepCandidate),
+  rep_status = clean_text(sen$RepStatus),
+  rep_votes = clean_num(sen$RepVotes),
+  rep_pct = clean_pct(sen$RepVotesMajorPercent),
+  dem_candidate = clean_text(sen$DemCandidate),
+  dem_status = clean_text(sen$DemStatus),
+  dem_votes = clean_num(sen$DemVotes),
+  dem_pct = clean_pct(sen$DemVotesMajorPercent),
+  third_party = clean_text(sen$ThirdParty),
+  third_candidate = clean_text(sen$ThirdCandidate),
+  third_status = clean_text(sen$ThirdStatus),
+  third_votes = clean_num(sen$ThirdVotes),
+  third_pct = clean_pct(sen$ThirdVotesTotalPercent),
+  other_votes = clean_num(sen$OtherVotes),
+  plurality_party = clean_text(sen$PluralityParty),
+  plurality_votes = clean_num(sen$PluralityVotes)
+)
+
+
+# ----- president --------------------------------------------------------------
+
+prez_fls <- list.files("raw/cq", pattern = "^prez_.*[.]csv$", full.names = TRUE)
+
+prez_raw <- map_dfr(prez_fls, function(f) {
+  d <- read_csv(f, skip = 2, col_types = cols(.default = "c"), show_col_types = FALSE) |>
+    filter(Office == "President")
+  d$cycle <- as.integer(str_extract(basename(f), "[0-9]{4}"))
+  d
+})
+
+prez <- prez_raw |>
+  mutate(
+    office = "President",
+    state_code = st_map[Area],
+    district_number = 0L,
+    election_type = "General"
+  )
+
+prez_clean <- tibble(
+  cycle = prez$cycle,
+  office = prez$office,
+  state_code = prez$state_code,
+  district_number = prez$district_number,
+  election_type = prez$election_type,
+  rep_candidate = clean_text(prez$RepCandidate),
+  rep_status = clean_text(prez$RepStatus),
+  rep_votes = clean_num(prez$RepVotes),
+  rep_pct = clean_pct(prez$RepVotesMajorPercent),
+  dem_candidate = clean_text(prez$DemCandidate),
+  dem_status = clean_text(prez$DemStatus),
+  dem_votes = clean_num(prez$DemVotes),
+  dem_pct = clean_pct(prez$DemVotesMajorPercent),
+  third_party = clean_text(prez$ThirdParty),
+  third_candidate = clean_text(prez$ThirdCandidate),
+  third_status = clean_text(prez$ThirdStatus),
+  third_votes = clean_num(prez$ThirdVotes),
+  third_pct = clean_pct(prez$ThirdVotesTotalPercent),
+  other_votes = clean_num(prez$OtherVotes),
+  plurality_party = clean_text(prez$PluralityParty),
+  plurality_votes = clean_num(prez$PluralityVotes)
+)
+
+
+# ----- governor ---------------------------------------------------------------
+
+gov_fls <- list.files("raw/cq", pattern = "^gov_.*[.]csv$", full.names = TRUE)
+
+gov_raw <- map_dfr(gov_fls, function(f) {
+  d <- read_csv(f, skip = 2, col_types = cols(.default = "c"), show_col_types = FALSE) |>
+    filter(Office == "Governor")
+  d$cycle <- as.integer(str_extract(basename(f), "[0-9]{4}"))
+  d
+})
+
+gov <- gov_raw |>
+  mutate(
+    office = "Governor",
+    state_code = st_map[Area],
+    district_number = 0L,
+    election_type = ifelse(
+      grepl("Runoff", RaceTypeName) | (st_map[Area] == "LA" & cycle == 2015 & RepVotes == "505,940"),
+      "Runoff",
+      "General"
+    )
+  )
+
+gov_clean <- tibble(
+  cycle = gov$cycle,
+  office = gov$office,
+  state_code = gov$state_code,
+  district_number = gov$district_number,
+  election_type = gov$election_type,
+  rep_candidate = clean_text(gov$RepCandidate),
+  rep_status = clean_text(gov$RepStatus),
+  rep_votes = clean_num(gov$RepVotes),
+  rep_pct = clean_pct(gov$RepVotesMajorPercent),
+  dem_candidate = clean_text(gov$DemCandidate),
+  dem_status = clean_text(gov$DemStatus),
+  dem_votes = clean_num(gov$DemVotes),
+  dem_pct = clean_pct(gov$DemVotesMajorPercent),
+  third_party = clean_text(gov$ThirdParty),
+  third_candidate = clean_text(gov$ThirdCandidate),
+  third_status = clean_text(gov$ThirdStatus),
+  third_votes = clean_num(gov$ThirdVotes),
+  third_pct = clean_pct(gov$ThirdVotesTotalPercent),
+  other_votes = clean_num(gov$OtherVotes),
+  plurality_party = clean_text(gov$PluralityParty),
+  plurality_votes = clean_num(gov$PluralityVotes)
+)
+
+
+# ----- combine-and-insert -----------------------------------------------------
+
+cq_all <- bind_rows(hou_clean, sen_clean, prez_clean, gov_clean) |>
+  filter(!is.na(state_code))
+
+message("Total CQ election records to insert: ", nrow(cq_all))
+
+init_table(db, "cq_elections")
+
+dbWriteTable(db, "cq_elections", cq_all, append = TRUE)
+
+message("Successfully populated cq_elections: ", dbGetQuery(db, "SELECT count(*) FROM cq_elections")[[1]], " rows.")

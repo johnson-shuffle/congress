@@ -1,0 +1,9 @@
+# Congressional Retirements & Member Turnover Data
+
+Data on congressional retirements and member casualties was manually compiled from the RollCall.com casualty lists (originally archived at http://www.rollcall.com/politics/casualtylists/) covering the 103rd to 114th Congress (1993–2016).
+
+Upstream source:
+  raw/retirements.csv (334 retirement records across House and Senate)
+
+Synthesis:
+  analysis/retirements.R combines this curated record set with member rosters from crosswalk_members (and govtrack_term for Senate classes) to generate election year status and retirement indicators for all congressional terms in congress.sqlite.

@@ -3,7 +3,7 @@
 # ------------------------------------------------------------------------------
 # r script to standardize csv formats (add POP column when missing)
 # ------------------------------------------------------------------------------
-# setwd('~/Desktop/cffr/')
+# setwd('raw/cffr')
 # for (d in list.dirs()) {
 #   for (f in list.files(file.path(d), pattern = '*.csv')) {
 #     x <- read.csv(file.path(d,f))
@@ -15,13 +15,11 @@
 
 # ------------------------------------------------------------------------------
 # locations
-# ------------------------------------------------------------------------------
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+db="$REPO_DIR/congress.sqlite"
+raw_cffr="$REPO_DIR/raw/cffr"
 
-# database
-db=~/Projects/congress/congress.sqlite
-
-# zip files
-cd ~/Desktop/cffr/
+cd "$raw_cffr"
 
 # ------------------------------------------------------------------------------
 # create empty tables in the database
@@ -68,7 +66,7 @@ y=($(seq 1993 1 2010))
 # array of tables
 for i in ${y[@]}; do
 
-    cd ~/Desktop/cffr/
+    cd "$raw_cffr"
 
     # agencies and programs
     a=${i:2:3}"agen.txt"

@@ -1,9 +1,10 @@
 # ----- Preample ----------------------------------------------------------
 
+source("config.R")
 
 # ----- Data Dictionary ---------------------------------------------------
 
-td <- '~/Desktop/opensecrets/'
+td <- file.path(path_raw, "opensecrets")
 
 pag <- 'https://www.opensecrets.org/resources/datadictionary/'
 dic_links <- list(
