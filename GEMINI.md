@@ -77,12 +77,18 @@ The following 22 tables and views are populated, verified, and active in `congre
 | `lcv_scores` | 12,430 | `analysis/lcv-scores.R` | SQLite query (`lcv_votes` + `voteview_info` + `voteview_cast`) |
 | `lcv_congress_scores` | 6,560 | `analysis/lcv-scores.R` | SQLite query (`lcv_votes` + `voteview_info` + `voteview_cast`) |
 | `retirements` | 6,567 | `analysis/retirements.R` | SQLite query (`crosswalk_members` + `raw/retirements.csv`) |
+| `cffr_agency` | 9,979 | `data/cffr.R` | `raw/cffr/*agen.txt` |
+| `cffr_program`| 39,191 | `data/cffr.R` | `raw/cffr/*prog.txt` |
+| `cffr` | 7,556,231 | `data/cffr.R` | `raw/cffr/*CFFIND/*.csv` |
 
 ---
 
 ## Active Task & Next Step
 
 ### Completed (`Done` on Trello):
+- **Card:** `ETL: CFFR Federal Funds Spending` (ID: `6aca85cd6f735187ceed644f`)
+  - Converted legacy `data/cffr.sh` into modular R/DBI pipeline `data/cffr.R` and schemas `sql/cffr*.sql`.
+  - Ingested `cffr_agency` (9,979 rows), `cffr_program` (39,191 rows), and `cffr` (7,556,231 rows) spanning 1993–2010.
 - **Card:** `ETL: LCV Environmental Voting Scores` (ID: `6aca85cc3b75b0c78807a989`)
   - Ingestion: `data/lcv-votes.R` populates `lcv_votes` from raw curated `raw/lcv/lcv-votes.csv`.
   - Synthesis: `analysis/lcv-scores.R` computes `lcv_scores` (annual) and `lcv_congress_scores` (biennial) from SQLite base tables.
@@ -93,5 +99,4 @@ The following 22 tables and views are populated, verified, and active in `congre
   - Synthesis: `analysis/retirements.R` synthesizes `retirements` (6,567 terms) with `election_year` and `retire` flags.
 
 ### Next Queue Candidates (`To Do` on Trello):
-- `ETL: CFFR Federal Funds Spending` (ID: `6aca85cd6f735187ceed644f`)
 - `ETL: OpenSecrets Campaign Finance Contributions` (ID: `6aca85cd3797128d570b4647`)
