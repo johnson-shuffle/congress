@@ -84,12 +84,22 @@ The following 22 tables and views are populated, verified, and active in `congre
 | `crp_candidates` | 70,454 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`cands*.txt`) |
 | `crp_committees` | 157,353 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`cmtes*.txt`) |
 | `crp_pacs` | 3,880,045 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`pacs*.txt`) |
+| `eia_plants_district` | 87,096 | `analysis/eia-plants-district.R` | SQLite query (`eia_plants` + `raw/cd-maps/`) |
+| `eia_district_emissions` | 9,165 | `analysis/eia-district-emissions.R` | SQLite query (`eia_generation` + `eia_plants_district`) |
+| `noaa_degree_days` | 420,768 | `data/noaa.R` | `raw/noaa/` / NOAA CPC FTP |
+| `noaa_state_degree_days` (view) | 1,152 | `data/noaa.R` | Analytical view on `noaa_degree_days` |
 
 ---
 
 ## Active Task & Next Step
 
 ### Completed (`Done` on Trello):
+- **Card:** `4. Curate Spatial & Climate Feature Extraction (Tier 2)` (ID: `6ac9ecb9426eafc98af9d131`)
+  - Modernized EIA spatial plant matching across decennial redistricting cycles into `eia_plants_district` (87,096 rows).
+  - Synthesized congressional district annual generation and CO2 emissions in `eia_district_emissions` (9,165 rows).
+  - Refactored `data/prism.R` with modern `sf` / `terra` zonal raster extraction and self-contained validation harness.
+  - Ingested NOAA CPC population-weighted heating and cooling degree days in `noaa_degree_days` (420,768 rows) and view `noaa_state_degree_days` (1,152 rows).
+  - Authored comprehensive specification `docs/spatial-climate-specification.md` documenting thermal unit conversions, carbon emissions factors, and BLS CPI deflators.
 - **Card:** `ETL: OpenSecrets Campaign Finance Contributions` (ID: `6aca85cd3797128d570b4647`)
   - Converted legacy `data/opensecrets.sh` into modular R/DBI pipeline `data/opensecrets.R` and schemas `sql/crp-*.sql`.
   - Ingested `crp_categories` (443 rows), `crp_candidates` (70,454 rows), `crp_committees` (157,353 rows), and `crp_pacs` (3,880,045 rows) spanning 1990–2016.
@@ -106,5 +116,5 @@ The following 22 tables and views are populated, verified, and active in `congre
   - Synthesis: `analysis/retirements.R` synthesizes `retirements` (6,567 terms) with `election_year` and `retire` flags.
 
 ### Next Queue Candidates (`To Do` on Trello):
-- `4. Curate Spatial & Climate Feature Extraction (Tier 2)` (ID: `6ac9ecb9426eafc98af9d131`)
 - `5. Refactor Master Panel Assembly (Tier 3)` (ID: `6ac9ecbae38c0d1f0e0b71f7`)
+- `6. Showcase Core Bayesian Stan Models (Tier 4)` (ID: `6ac9ecbb2fea4242fd23ce31`)
