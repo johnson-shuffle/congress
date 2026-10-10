@@ -90,12 +90,19 @@ The following 22 tables and views are populated, verified, and active in `congre
 | `noaa_state_degree_days` (view) | 1,152 | `data/noaa.R` | Analytical view on `noaa_degree_days` |
 | `prism_district` | 109,632 | `data/prism.R` | `raw/prism/` (PRISM Climate Group) |
 | `prism_district_annual` (view) | 9,073 | `analysis/prism.R` | Analytical view on `prism_district` |
+| `census_district` | 10,028 | `data/census.R` | `raw/census/1990_STF3D.csv`, `c*_DP*.csv` |
+| `census_state` | 1,173 | `data/census.R` | `raw/census/1990_STF3D.csv`, `c*_DP*.csv` |
+| `census` (view) | 11,201 | `data/census.R` | Compatibility view on `census_district` + `census_state` |
 
 ---
 
 ## Active Task & Next Step
 
 ### Completed (`Done` on Trello):
+- **Card:** `Migrate: Census & STF3D District Demographics` (ID: `6aca85d4cf073c440abc738c`)
+  - Migrated genuine raw sources (`1990_STF3D.csv`, `c106_DP*.csv` through `c113_DP*.csv`) into `raw/census/`.
+  - Built unified modern ETL pipeline `data/census.R` and schema `sql/census-district.sql`.
+  - Ingested `census_district` (10,028 rows) and `census_state` (1,173 rows) with compatibility view `census` (11,201 rows) spanning 1993–2015.
 - **Card:** `4. Curate Spatial & Climate Feature Extraction (Tier 2)` (ID: `6ac9ecb9426eafc98af9d131`)
   - Modernized EIA spatial plant matching across decennial redistricting cycles into `eia_plants_district` (87,096 rows).
   - Synthesized congressional district annual generation and CO2 emissions in `eia_district_emissions` (9,165 rows).
