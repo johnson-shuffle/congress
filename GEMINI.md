@@ -80,12 +80,19 @@ The following 22 tables and views are populated, verified, and active in `congre
 | `cffr_agency` | 9,979 | `data/cffr.R` | `raw/cffr/*agen.txt` |
 | `cffr_program`| 39,191 | `data/cffr.R` | `raw/cffr/*prog.txt` |
 | `cffr` | 7,556,231 | `data/cffr.R` | `raw/cffr/*CFFIND/*.csv` |
+| `crp_categories` | 443 | `data/opensecrets.R` | `raw/opensecrets/codes_industries.csv` |
+| `crp_candidates` | 70,454 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`cands*.txt`) |
+| `crp_committees` | 157,353 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`cmtes*.txt`) |
+| `crp_pacs` | 3,880,045 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`pacs*.txt`) |
 
 ---
 
 ## Active Task & Next Step
 
 ### Completed (`Done` on Trello):
+- **Card:** `ETL: OpenSecrets Campaign Finance Contributions` (ID: `6aca85cd3797128d570b4647`)
+  - Converted legacy `data/opensecrets.sh` into modular R/DBI pipeline `data/opensecrets.R` and schemas `sql/crp-*.sql`.
+  - Ingested `crp_categories` (443 rows), `crp_candidates` (70,454 rows), `crp_committees` (157,353 rows), and `crp_pacs` (3,880,045 rows) spanning 1990–2016.
 - **Card:** `ETL: CFFR Federal Funds Spending` (ID: `6aca85cd6f735187ceed644f`)
   - Converted legacy `data/cffr.sh` into modular R/DBI pipeline `data/cffr.R` and schemas `sql/cffr*.sql`.
   - Ingested `cffr_agency` (9,979 rows), `cffr_program` (39,191 rows), and `cffr` (7,556,231 rows) spanning 1993–2010.
@@ -99,4 +106,5 @@ The following 22 tables and views are populated, verified, and active in `congre
   - Synthesis: `analysis/retirements.R` synthesizes `retirements` (6,567 terms) with `election_year` and `retire` flags.
 
 ### Next Queue Candidates (`To Do` on Trello):
-- `ETL: OpenSecrets Campaign Finance Contributions` (ID: `6aca85cd3797128d570b4647`)
+- `4. Curate Spatial & Climate Feature Extraction (Tier 2)` (ID: `6ac9ecb9426eafc98af9d131`)
+- `5. Refactor Master Panel Assembly (Tier 3)` (ID: `6ac9ecbae38c0d1f0e0b71f7`)
