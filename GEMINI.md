@@ -27,7 +27,7 @@ The repository builds a consolidated data store uniting federal spending, electo
 - **Modern R Standards:**
   - Native pipe `|>` instead of `%>%` or `%<>%`.
   - Modern `tidyverse` (`dplyr`, `tidyr`, `readr`, `readxl`) over deprecated `plyr`/`reshape2`.
-  - Parameterized database operations using `DBI` and central helpers in `config.R`.
+  - Parameterized database operations using `DBI` and central helpers in `config.R` (standardized on `execute_sql_file(db, file.path(path_sql, "<schema>.sql"))` for DDL execution).
 
 ### 4. Project Management (Trello)
 - Board configuration is located at `.agents/config.json`.
