@@ -40,7 +40,7 @@ The repository builds a consolidated data store uniting federal spending, electo
 
 ## Current Database State (`congress.sqlite`)
 
-The following 22 tables and views are populated, verified, and active in `congress.sqlite`:
+The following tables and views are populated, verified, and active in `congress.sqlite`:
 
 | Table / View | Rows | Role / Pipeline Script | Source Files |
 | :--- | :--- | :--- | :--- |
@@ -93,12 +93,22 @@ The following 22 tables and views are populated, verified, and active in `congre
 | `census_district` | 10,028 | `data/census.R` | `raw/census/1990_STF3D.csv`, `c*_DP*.csv` |
 | `census_state` | 1,173 | `data/census.R` | `raw/census/1990_STF3D.csv`, `c*_DP*.csv` |
 | `census` (view) | 11,201 | `data/census.R` | Compatibility view on `census_district` + `census_state` |
+| `fec_special_elections` | 121 | `data/fec.R` | `raw/fec/special_elections_house.csv`, `special_elections_senate.csv` |
+| `fec_margins_2014` | 474 | `data/fec.R` | `raw/fec/results14.xls` |
+| `fec_presidential_margins` | 306 | `data/fec.R` | `raw/fec/margins_presidents.csv` |
+| `fec_elections` | 16,110 | `data/fec.R` | `raw/fec/results04.xls` through `results14.xls` |
+| `election_margins` (view) | 6,567 | `data/fec.R` | Compatibility/analytical view on `crosswalk_members` + `cq_margins` + `fec_special_elections` |
 
 ---
 
 ## Active Task & Next Step
 
 ### Completed (`Done` on Trello):
+- **Card:** `ETL: FEC Federal Elections & Margins` (ID: `6acad29abcbe99e6325b0f72`)
+  - Staged genuine raw sources (`results04.xls` through `results14.xls`, `special_elections_*.csv`, `margins_presidents.csv`) into `raw/fec/`.
+  - Built unified modern ETL pipeline `data/fec.R` and schemas `sql/fec-*.sql`.
+  - Ingested `fec_special_elections` (121 rows), `fec_margins_2014` (474 rows), `fec_presidential_margins` (306 rows), and `fec_elections` (16,110 candidate records).
+  - Created synthesized master analytical view `election_margins` (6,567 rows) resolving victory margins across general and special elections.
 - **Card:** `Migrate: Census & STF3D District Demographics` (ID: `6aca85d4cf073c440abc738c`)
   - Migrated genuine raw sources (`1990_STF3D.csv`, `c106_DP*.csv` through `c113_DP*.csv`) into `raw/census/`.
   - Built unified modern ETL pipeline `data/census.R` and schema `sql/census-district.sql`.
