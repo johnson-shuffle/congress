@@ -71,7 +71,7 @@ states <- raw_states |>
 
 db <- get_db()
 
-init_table(db, "states")
+execute_sql_file(db, file.path(path_sql, "states.sql"))
 
 dbWriteTable(db, "states", states, append = TRUE)
 

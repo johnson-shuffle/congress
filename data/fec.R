@@ -17,24 +17,13 @@ library(DBI)
 
 db <- get_db()
 
-# ----- 1. Execute DDL schemas -------------------------------------------------
+# ----- 1. Initialize tables from DDL ------------------------------------------
 
-execute_sql_file <- function(db, path) {
-  sql <- readLines(path, warn = FALSE) |> paste(collapse = "\n")
-  statements <- strsplit(sql, ";")[[1]]
-  for (stmt in statements) {
-    clean_stmt <- str_trim(stmt)
-    if (nchar(clean_stmt) > 0) {
-      dbExecute(db, clean_stmt)
-    }
-  }
-}
-
-execute_sql_file(db, "sql/fec-special-elections.sql")
-execute_sql_file(db, "sql/fec-margins-2014.sql")
-execute_sql_file(db, "sql/fec-presidential-margins.sql")
-execute_sql_file(db, "sql/fec-elections.sql")
-execute_sql_file(db, "sql/election-margins.sql")
+execute_sql_file(db, file.path(path_sql, "fec-special-elections.sql"))
+execute_sql_file(db, file.path(path_sql, "fec-margins-2014.sql"))
+execute_sql_file(db, file.path(path_sql, "fec-presidential-margins.sql"))
+execute_sql_file(db, file.path(path_sql, "fec-elections.sql"))
+execute_sql_file(db, file.path(path_sql, "election-margins.sql"))
 
 message("DDL schemas initialized.")
 

@@ -21,7 +21,7 @@ db <- get_db()
 
 # ----- 1. voteview_members ----------------------------------------------------
 
-init_table(db, "voteview_members")
+execute_sql_file(db, file.path(path_sql, "voteview-members.sql"))
 
 existing_members <- dbGetQuery(db, "SELECT count(*) FROM voteview_members")[[1]]
 
@@ -89,7 +89,7 @@ if (existing_members == 0) {
 
 # ----- 2. voteview_info (roll call metadata) ----------------------------------
 
-init_table(db, "voteview_info")
+execute_sql_file(db, file.path(path_sql, "voteview-info.sql"))
 
 fetch_rollcalls <- function(congress, chamber_code) {
   fname <- sprintf("%s%03d_rollcalls.csv", chamber_code, congress)
@@ -138,7 +138,7 @@ message(sprintf("Loaded %d roll call records into 'voteview_info'.", nrow(all_ro
 
 # ----- 3. voteview_cast (individual votes cast) ------------------------------
 
-init_table(db, "voteview_cast")
+execute_sql_file(db, file.path(path_sql, "voteview-cast.sql"))
 
 fetch_votes <- function(congress, chamber_code) {
   fname <- sprintf("%s%03d_votes.csv", chamber_code, congress)

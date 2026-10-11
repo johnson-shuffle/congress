@@ -158,7 +158,7 @@ message("Total congressional session records: ", nrow(all_sessions))
 
 db <- get_db()
 
-init_table(db, "congress_sessions")
+execute_sql_file(db, file.path(path_sql, "congress-sessions.sql"))
 
 dbWriteTable(db, "congress_sessions", all_sessions, append = TRUE)
 

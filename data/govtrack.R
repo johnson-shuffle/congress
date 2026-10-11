@@ -161,10 +161,10 @@ govtrack_term <- bind_rows(parsed_curr$terms, parsed_hist$terms) |>
 
 db <- get_db()
 
-init_table(db, "govtrack_info")
+execute_sql_file(db, file.path(path_sql, "govtrack-info.sql"))
 dbWriteTable(db, "govtrack_info", govtrack_info, append = TRUE)
 
-init_table(db, "govtrack_term")
+execute_sql_file(db, file.path(path_sql, "govtrack-term.sql"))
 dbWriteTable(db, "govtrack_term", govtrack_term, append = TRUE)
 
 dbDisconnect(db)

@@ -21,7 +21,7 @@ db <- get_db()
 # ----- 1. Ingest crp_categories ---------------------------------------------
 
 message("Ingesting crp_categories...")
-init_table(db, "crp_categories")
+execute_sql_file(db, file.path(path_sql, "crp-categories.sql"))
 
 codes_path <- file.path(raw_os_dir, "codes_industries.csv")
 if (file.exists(codes_path)) {
@@ -47,9 +47,9 @@ if (file.exists(codes_path)) {
 
 # ----- 2. Ingest crp_candidates, crp_committees, crp_pacs -------------------
 
-init_table(db, "crp_candidates")
-init_table(db, "crp_committees")
-init_table(db, "crp_pacs")
+execute_sql_file(db, file.path(path_sql, "crp-candidates.sql"))
+execute_sql_file(db, file.path(path_sql, "crp-committees.sql"))
+execute_sql_file(db, file.path(path_sql, "crp-pacs.sql"))
 
 zip_files <- list.files(raw_os_dir, pattern = "^CampaignFin[0-9]{2}[.]zip$", full.names = TRUE) |>
   sort()

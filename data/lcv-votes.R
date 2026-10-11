@@ -47,7 +47,7 @@ lcv_votes <- raw_votes |>
 
 db <- get_db()
 
-init_table(db, "lcv_votes")
+execute_sql_file(db, file.path(path_sql, "lcv-votes.sql"))
 dbWriteTable(db, "lcv_votes", lcv_votes, append = TRUE)
 
 cnt_votes <- dbGetQuery(db, "SELECT count(*) FROM lcv_votes")[[1]]
