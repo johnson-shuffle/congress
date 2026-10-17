@@ -29,9 +29,19 @@ CREATE TABLE crosswalk_members (
     fec_id TEXT,
     state_code TEXT NOT NULL,
     district_number INTEGER NOT NULL DEFAULT 0,
+    senate_class INTEGER NOT NULL DEFAULT 0,
     party TEXT,
+    first_name TEXT,
+    preferred_name TEXT,
     last_name TEXT,
+    suffix TEXT,
     full_name TEXT,
+    gender TEXT,
+    birthday TEXT,
+    occupancy INTEGER,
+    means INTEGER,
+    start_date TEXT,
+    end_date TEXT,
     PRIMARY KEY (congress, chamber, icpsr_id, district_number)
 );
 ```
@@ -50,9 +60,19 @@ CREATE TABLE crosswalk_members (
 | `fec_id` | `TEXT` | Yes | Principal candidate FEC campaign ID (e.g., `S6AZ00019`). |
 | `state_code` | `TEXT` | No | Two-letter state postal abbreviation. |
 | `district_number`| `INTEGER` | No | District number for House members (0 for at-large states and Senate). |
+| `senate_class` | `INTEGER` | No | Senate class (`1`, `2`, `3` for Senate; `0` for House). |
 | `party` | `TEXT` | Yes | Political party during this congressional session. |
+| `first_name` | `TEXT` | Yes | Legal first name. |
+| `preferred_name` | `TEXT` | Yes | Preferred name or nickname (fallback to `first_name`). |
 | `last_name` | `TEXT` | Yes | Member surname. |
-| `full_name` | `TEXT` | Yes | Full normalized member name (`LASTNAME, FIRSTNAME`). |
+| `suffix` | `TEXT` | Yes | Name suffix (`Jr.`, `III`, etc.). |
+| `full_name` | `TEXT` | Yes | Full normalized member name. |
+| `gender` | `TEXT` | Yes | Member gender (`Male` or `Female`). |
+| `birthday` | `TEXT` | Yes | Member date of birth (`YYYY-MM-DD`). |
+| `occupancy` | `INTEGER` | Yes | Seat occupancy order within the Congress (`0` = sole, `1` = first, `2` = second). |
+| `means` | `INTEGER` | Yes | Means of attaining office (`1` = general election, `2` = special election, `5` = appointed). |
+| `start_date` | `TEXT` | Yes | Term start date (`YYYY-MM-DD`), patched for mid-Congress transitions. |
+| `end_date` | `TEXT` | Yes | Term end date (`YYYY-MM-DD`), patched for mid-Congress transitions. |
 
 ---
 

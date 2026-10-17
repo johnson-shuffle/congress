@@ -15,7 +15,7 @@ SELECT
     cw.chamber,
     cw.state_code,
     cw.district_number,
-    COALESCE(cq.senate_class, 0) AS senate_class,
+    COALESCE(NULLIF(cq.senate_class, 0), cw.senate_class, 0) AS senate_class,
     cw.govtrack_id,
     cw.icpsr_id,
     cw.bioguide_id,

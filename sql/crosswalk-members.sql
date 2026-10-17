@@ -1,6 +1,7 @@
 -- ============================================================================
--- crosswalk_members: Master identity crosswalk for US Congress members
--- Links GovTrack, ICPSR (Voteview), Bioguide, OpenSecrets (CRP), and FEC IDs
+-- crosswalk_members: Master identity & term crosswalk for US Congress members
+-- Links GovTrack, ICPSR (Voteview), Bioguide, OpenSecrets (CRP), VoteSmart,
+-- and FEC IDs alongside biographical and term attainment metadata (103rd–114th)
 -- ============================================================================
 
 DROP TABLE IF EXISTS crosswalk_members;
@@ -16,9 +17,19 @@ CREATE TABLE crosswalk_members (
     fec_id TEXT,
     state_code TEXT NOT NULL,
     district_number INTEGER NOT NULL DEFAULT 0,
+    senate_class INTEGER NOT NULL DEFAULT 0,
     party TEXT,
+    first_name TEXT,
+    preferred_name TEXT,
     last_name TEXT,
+    suffix TEXT,
     full_name TEXT,
+    gender TEXT,
+    birthday TEXT,
+    occupancy INTEGER,
+    means INTEGER,
+    start_date TEXT,
+    end_date TEXT,
     PRIMARY KEY (congress, chamber, icpsr_id, district_number)
 );
 
