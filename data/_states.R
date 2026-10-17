@@ -71,9 +71,10 @@ states <- raw_states |>
 
 db <- get_db()
 
-execute_sql_file(db, file.path(path_sql, "states.sql"))
-
+dbExecute(db, "PRAGMA foreign_keys = OFF;")
+execute_sql_file(db, file.path(path_sql, "_states.sql"))
 dbWriteTable(db, "states", states, append = TRUE)
+dbExecute(db, "PRAGMA foreign_keys = ON;")
 
 dbDisconnect(db)
 

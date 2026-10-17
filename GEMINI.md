@@ -16,9 +16,9 @@ The repository builds a consolidated data store uniting federal spending, electo
 
 ### 2. Repository Layout & Pipeline Roles
 - **`raw/`**: Strictly genuine upstream raw source files in lowercase domain folders (e.g., `raw/cq/`, `raw/govtrack/`, `raw/eia/`). **100% ignored by git. Never store intermediate or compiled `.Rda` / `.RData` files in `raw/`.**
-- **`data/`**: Ingestion ETL scripts that parse genuine raw sources into SQLite database base tables (e.g., `data/states.R`, `data/eia-plants.R`, `data/eia-seds.R`).
-- **`analysis/`**: Synthesis and modeling scripts that query database tables to construct crosswalks, master panels, and run models (e.g., `analysis/crosswalk-members.R`, `analysis/eia-states.R`, `analysis/eia-generation.R`).
-- **`sql/`**: Modular SQLite DDL files in strict `kebab-case` (e.g., `sql/states.sql`, `sql/eia-plants.sql`, `sql/eia-states.sql`).
+- **`data/`**: Ingestion ETL scripts that parse genuine raw sources into SQLite database base tables (e.g., `data/_states.R`, `data/eia-plants.R`, `data/eia-seds.R`). Scripts in `data/` must not depend on other database tables, with the sole exception of the bootstrap `states` lookup table (`sql/_states.sql` / `data/_states.R`), which must be run first.
+- **`analysis/`**: Synthesis and modeling scripts that query database tables to construct crosswalks, master panels, and run models (e.g., `analysis/crosswalk-members.R`, `analysis/fec-margins.R`, `analysis/eia-states.R`, `analysis/eia-generation.R`).
+- **`sql/`**: Modular SQLite DDL files in strict `kebab-case` (e.g., `sql/_states.sql`, `sql/eia-plants.sql`, `sql/eia-states.sql`). The leading underscore in `sql/_states.sql` signifies that it is the foundational bootstrap schema and must be initialized first.
 - **`docs/`**: Technical documentation, data dictionaries, and architectural specifications.
 
 ### 3. Code Style & Naming Conventions
@@ -44,7 +44,7 @@ The following tables and views are populated, verified, and active in `congress.
 
 | Table / View | Rows | Role / Pipeline Script | Source Files |
 | :--- | :--- | :--- | :--- |
-| `states` | 51 | `data/states.R` | `raw/states/us_state_info.csv` |
+| `states` | 51 | `data/_states.R` | `raw/states/us_state_info.csv` |
 | `govtrack_info` | 12,770 | `data/govtrack.R` | `raw/legislators/legislators-historical.yaml`, `current.yaml` |
 | `govtrack_term` | 45,535 | `data/govtrack.R` | `raw/legislators/legislators-historical.yaml`, `current.yaml` |
 | `voteview_members`| 6,567 | `data/voteview.R` | `raw/voteview/H*_members.csv`, `S*_members.csv` |
@@ -94,10 +94,10 @@ The following tables and views are populated, verified, and active in `congress.
 | `census_state` | 1,173 | `data/census.R` | `raw/census/1990_STF3D.csv`, `c*_DP*.csv` |
 | `census` (view) | 11,201 | `data/census.R` | Compatibility view on `census_district` + `census_state` |
 | `fec_special_elections` | 121 | `data/fec.R` | `raw/fec/special_elections_house.csv`, `special_elections_senate.csv` |
-| `fec_margins_2014` | 474 | `data/fec.R` | `raw/fec/results14.xls` |
 | `fec_presidential_margins` | 306 | `data/fec.R` | `raw/fec/margins_presidents.csv` |
 | `fec_elections` | 16,110 | `data/fec.R` | `raw/fec/results04.xls` through `results14.xls` |
-| `election_margins` (view) | 6,567 | `data/fec.R` | Compatibility/analytical view on `crosswalk_members` + `cq_margins` + `fec_special_elections` |
+| `fec_margins_2014` | 474 | `analysis/fec-margins.R` | SQLite query (`fec_elections` + `crosswalk_members`) |
+| `election_margins` (view) | 6,567 | `analysis/fec-margins.R` | Compatibility/analytical view on `crosswalk_members` + `cq_margins` + `fec_special_elections` |
 
 ---
 
@@ -106,9 +106,9 @@ The following tables and views are populated, verified, and active in `congress.
 ### Completed (`Done` on Trello):
 - **Card:** `ETL: FEC Federal Elections & Margins` (ID: `6acad29abcbe99e6325b0f72`)
   - Staged genuine raw sources (`results04.xls` through `results14.xls`, `special_elections_*.csv`, `margins_presidents.csv`) into `raw/fec/`.
-  - Built unified modern ETL pipeline `data/fec.R` and schemas `sql/fec-*.sql`.
-  - Ingested `fec_special_elections` (121 rows), `fec_margins_2014` (474 rows), `fec_presidential_margins` (306 rows), and `fec_elections` (16,110 candidate records).
-  - Created synthesized master analytical view `election_margins` (6,567 rows) resolving victory margins across general and special elections.
+  - Built raw ETL pipeline `data/fec.R`, synthesis script `analysis/fec-margins.R`, and schemas `sql/fec-*.sql` + `sql/election-margins.sql`.
+  - Ingested `fec_special_elections` (121 rows), `fec_presidential_margins` (306 rows), and `fec_elections` (16,110 candidate records) via `data/fec.R`.
+  - Synthesized `fec_margins_2014` (474 rows) and master analytical view `election_margins` (6,567 rows) via `analysis/fec-margins.R`.
 - **Card:** `Migrate: Census & STF3D District Demographics` (ID: `6aca85d4cf073c440abc738c`)
   - Migrated genuine raw sources (`1990_STF3D.csv`, `c106_DP*.csv` through `c113_DP*.csv`) into `raw/census/`.
   - Built unified modern ETL pipeline `data/census.R` and schema `sql/census-district.sql`.

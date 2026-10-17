@@ -48,6 +48,9 @@ init_table <- function(conn, table_name) {
   file_base <- gsub("_", "-", table_name)
   sql_path <- file.path(path_sql, paste0(file_base, ".sql"))
   if (!file.exists(sql_path)) {
+    sql_path <- file.path(path_sql, paste0("_", file_base, ".sql"))
+  }
+  if (!file.exists(sql_path)) {
     sql_path <- file.path(path_sql, paste0(table_name, ".sql"))
   }
   execute_sql_file(conn, sql_path)
