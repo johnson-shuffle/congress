@@ -1,9 +1,9 @@
 # Congress Data Pipeline & SQLite Modernization
 
 ## Project Objective
-Transform legacy congressional research data workflows into a modular, production-ready R ETL pipeline backed by a local SQLite database (`congress.sqlite`).
+Transform legacy congressional research data workflows (originally archived in `~/Projects/congress-legacy`) into a modular, production-ready R ETL pipeline backed by a local SQLite database (`congress.sqlite`).
 
-The repository builds a consolidated data store uniting federal spending, electoral, legislative, energy, and environmental data for congressional districts and states (103rd–114th Congress).
+The repository builds a consolidated data store uniting federal spending, electoral, legislative, energy, and environmental data for congressional districts and states (103rd–114th Congress). Its primary analytical objective is to replace the ad-hoc `.Rda`-based master panel assembly scripts (`~/Projects/congress-legacy/Data/panel_house.R` and `panel_senate.R`) and feed the core Bayesian Stan estimation models directly from reproducible SQLite tables and analytical views.
 
 ---
 
@@ -83,6 +83,8 @@ The following tables and views are populated, verified, and active in `congress.
 | `crp_candidates` | 70,454 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`cands*.txt`) |
 | `crp_committees` | 157,353 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`cmtes*.txt`) |
 | `crp_pacs` | 3,880,045 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`pacs*.txt`) |
+| `crp_pac_other` | 1,113,501 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`pac_other*.txt`) |
+| `crp_indivs` | 43,441,148 | `data/opensecrets.R` | `raw/opensecrets/CampaignFin*.zip` (`indivs*.txt`) |
 | `eia_plants_district` | 87,096 | `analysis/eia-plants-district.R` | SQLite query (`eia_plants` + `raw/cd-maps/`) |
 | `eia_district_emissions` | 9,165 | `analysis/eia-district-emissions.R` | SQLite query (`eia_generation` + `eia_plants_district`) |
 | `noaa_degree_days` | 420,768 | `data/noaa.R` | `raw/noaa/` / NOAA CPC FTP |
@@ -96,6 +98,27 @@ The following tables and views are populated, verified, and active in `congress.
 | `fec_elections` | 16,110 | `data/fec.R` | `raw/fec/results04.xls` through `results14.xls` |
 | `fec_margins_2014` | 474 | `analysis/fec-margins.R` | SQLite query (`fec_elections` + `crosswalk_members`) |
 | `election_margins_vw` (view) | 6,567 | `analysis/fec-margins.R` (`sql/views/election-margins-vw.sql`) | Analytical view on `crosswalk_members` + `cq_margins` + `fec_special_elections` |
+
+---
+
+## Master Panel Source Coverage (`panel_house.R` & `panel_senate.R`)
+
+All upstream data domains required by legacy `~/Projects/congress-legacy/Data/panel_house.R` and `panel_senate.R` are mapped below (backlog `Migrate:` cards on Trello are only used by standalone exploratory analyses, not the master panels):
+
+| Panel Section | Legacy Input (`.Rda` / `.csv`) | Status in `congress.sqlite` |
+| :--- | :--- | :--- |
+| **1. Roll Call Votes** | `rolls_house_103_114_long.Rda`, `rolls_senate_103_114_long.Rda` | ✅ `voteview_cast`, `voteview_info` |
+| **2. LCV Roll Calls** | `lcv_votes.Rda`, `GovTrack_lcv_votes.Rda` | ✅ `lcv_votes` |
+| **3. Legislators & States** | `names_house.Rda`, `names_senate.Rda`, `us_state_info.csv` | ✅ `crosswalk_members`, `states` |
+| **4. BEA Income / GSP** | `bea_income.Rda` | ✅ `bea_gsi`, `bea_gsp`, `bea_pop` |
+| **5. BLS CPI & Unempl** | `bls_cpi.Rda`, `bls_unempl.Rda` | ✅ `bls_cpi`, `bls_unempl` |
+| **6. Census Demographics** | `census_all.Rda` | ✅ `census_district`, `census_state` |
+| **7. CRP Contributions** | `crp_contrib_totals.Rda` (`rbind(indivs, pacs.group)`) | ✅ `crp_categories`, `crp_candidates`, `crp_committees`, `crp_pacs`, `crp_pac_other`, `crp_indivs` |
+| **8. EIA Energy, Prices, CO2**| `eia_energy.Rda`, `eia_prices.Rda`, `eia_co2_district.Rda`, `eia_co2_state.Rda` | ✅ `eia_states`, `eia_seds`, `eia_prices`, `eia_district_emissions` |
+| **9. Election Margins** | `margins_house.Rda`, `margins_senate.Rda`, `special_elections_*.csv`, `margins_2014.Rda` | ✅ `cq_margins`, `fec_special_elections`, `fec_margins_2014`, `election_margins_vw` |
+| **10. Retirements** | `RollCall_retire.Rda` | ✅ `retirements` |
+| **11. LCV & DW-NOMINATE** | `lcv_scores_*.Rda`, `HL01113D21_BSSE.DAT` | ✅ `lcv_congress_scores`, `voteview_members` |
+| **12. Climate Degree Days** | `prism_deg_days.Rda` (House), `noaa_deg_days.Rda` (Senate) | ✅ `prism_district_annual_vw`, `noaa_state_degree_days_vw` |
 
 ---
 
@@ -119,7 +142,7 @@ The following tables and views are populated, verified, and active in `congress.
   - Authored comprehensive specification `docs/spatial-climate-specification.md` documenting thermal unit conversions, carbon emissions factors, and BLS CPI deflators.
 - **Card:** `ETL: OpenSecrets Campaign Finance Contributions` (ID: `6aca85cd3797128d570b4647`)
   - Converted legacy `data/opensecrets.sh` into modular R/DBI pipeline `data/opensecrets.R` and schemas `sql/tables/crp-*.sql`.
-  - Ingested `crp_categories` (443 rows), `crp_candidates` (70,454 rows), `crp_committees` (157,353 rows), and `crp_pacs` (3,880,045 rows) spanning 1990–2016.
+  - Ingested `crp_categories` (443 rows), `crp_candidates` (70,454 rows), `crp_committees` (157,353 rows), `crp_pacs` (3,880,045 rows), `crp_pac_other` (1,113,501 rows), and `crp_indivs` (43,441,148 rows) spanning 1990–2016.
 - **Card:** `ETL: CFFR Federal Funds Spending` (ID: `6aca85cd6f735187ceed644f`)
   - Converted legacy `data/cffr.sh` into modular R/DBI pipeline `data/cffr.R` and schemas `sql/tables/cffr*.sql`.
   - Ingested `cffr_agency` (9,979 rows), `cffr_program` (39,191 rows), and `cffr` (7,556,231 rows) spanning 1993–2010.
@@ -133,5 +156,6 @@ The following tables and views are populated, verified, and active in `congress.
   - Synthesis: `analysis/retirements.R` synthesizes `retirements` (6,567 terms) with `election_year` and `retire` flags.
 
 ### Next Queue Candidates (`To Do` on Trello):
+- **Immediate Next Step:** Build `analysis/opensecrets.R` (and `sql/tables/crp-contributions.sql` / view) to synthesize candidate-level `crp_indivs` + `crp_pacs` contribution totals (replacing legacy `crp_contrib_totals.R`).
 - `5. Refactor Master Panel Assembly (Tier 3)` (ID: `6ac9ecbae38c0d1f0e0b71f7`)
 - `6. Showcase Core Bayesian Stan Models (Tier 4)` (ID: `6ac9ecbb2fea4242fd23ce31`)
