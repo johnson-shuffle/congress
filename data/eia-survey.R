@@ -17,7 +17,7 @@ states <- dbGetQuery(db, "SELECT fips, state_code FROM states")
 all_states <- states$state_code
 
 # Execute DDL
-execute_sql_file(db, file.path(path_sql, "eia-survey.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "eia-survey.sql"))
 
 # ----- 1. Form 759: Utility Data (1990-2000) ----------------------------------
 

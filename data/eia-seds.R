@@ -13,7 +13,7 @@ db <- get_db()
 on.exit(dbDisconnect(db), add = TRUE)
 
 # Execute DDL
-execute_sql_file(db, file.path(path_sql, "eia-seds.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "eia-seds.sql"))
 
 # ----- 1. Ingest Complete_SEDS.csv --------------------------------------------
 

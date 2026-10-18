@@ -3,7 +3,6 @@
 -- Source: raw/carma/CARMAv30_PowerUser.zip (Region.csv)
 -- ============================================================================
 
-DROP VIEW IF EXISTS carma;
 DROP TABLE IF EXISTS carma_district;
 
 CREATE TABLE carma_district (
@@ -34,11 +33,3 @@ CREATE TABLE carma_district (
 );
 
 CREATE INDEX IF NOT EXISTS idx_carma_district_state ON carma_district(state_code);
-
--- Backward-compatibility view matching legacy schema
-CREATE VIEW IF NOT EXISTS carma AS
-SELECT 2004 AS year, fips, district_code, 'carbon dioxide' AS variable, carbon_2004 AS value, 'tons' AS units
-FROM carma_district
-UNION ALL
-SELECT 2009 AS year, fips, district_code, 'carbon dioxide' AS variable, carbon_2009 AS value, 'tons' AS units
-FROM carma_district;

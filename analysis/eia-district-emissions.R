@@ -19,7 +19,7 @@ message("Synthesizing congressional district annual electricity generation & emi
 
 # ----- execute DDL schema -----------------------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "eia-district-emissions.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "eia-district-emissions.sql"))
 
 # ----- aggregate plant emissions into congressional district totals -----------
 

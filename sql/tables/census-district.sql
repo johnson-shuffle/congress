@@ -6,7 +6,6 @@
 -- Ingestion: data/census.R
 -- ============================================================================
 
-DROP VIEW IF EXISTS census;
 DROP TABLE IF EXISTS census_state;
 DROP TABLE IF EXISTS census_district;
 
@@ -86,71 +85,3 @@ CREATE TABLE census_state (
 );
 
 CREATE INDEX IF NOT EXISTS idx_census_state_year ON census_state(year);
-
--- Compatibility view mimicking legacy census_all schema
-CREATE VIEW IF NOT EXISTS census AS
-SELECT 
-    fips,
-    district_number AS district,
-    pop_total AS "pop.total",
-    pct_white AS white,
-    pct_black AS black,
-    pct_indian AS indian,
-    pct_other AS other,
-    pct_hispanic AS hispanic,
-    pct_pop_65 AS "pop.65",
-    pct_pop_25 AS "pop.25",
-    pct_less_than_9th AS "less.than.9th",
-    pct_more_than_9th AS "more.than.9th",
-    pct_highschool AS highschool,
-    pct_somecollege AS somecollege,
-    pct_associate AS associate,
-    pct_bachelor AS bachelor,
-    pct_graduate AS graduate,
-    pct_empl_res AS "empl.res",
-    pct_empl_con AS "empl.con",
-    pct_empl_man AS "empl.man",
-    pct_empl_wst AS "empl.wst",
-    pct_empl_rt AS "empl.rt",
-    pct_empl_pub AS "empl.pub",
-    med_inc_house AS "med.inc.house",
-    med_inc_fam AS "med.inc.fam",
-    empl_total AS "empl.total",
-    pct_hm_electric AS "hm.electric",
-    hm_total AS "hm.total",
-    year,
-    pct_asian_island AS "asian.island"
-FROM census_district
-UNION ALL
-SELECT 
-    fips,
-    NULL AS district,
-    pop_total AS "pop.total",
-    pct_white AS white,
-    pct_black AS black,
-    pct_indian AS indian,
-    pct_other AS other,
-    pct_hispanic AS hispanic,
-    pct_pop_65 AS "pop.65",
-    pct_pop_25 AS "pop.25",
-    pct_less_than_9th AS "less.than.9th",
-    pct_more_than_9th AS "more.than.9th",
-    pct_highschool AS highschool,
-    pct_somecollege AS somecollege,
-    pct_associate AS associate,
-    pct_bachelor AS bachelor,
-    pct_graduate AS graduate,
-    pct_empl_res AS "empl.res",
-    pct_empl_con AS "empl.con",
-    pct_empl_man AS "empl.man",
-    pct_empl_wst AS "empl.wst",
-    pct_empl_rt AS "empl.rt",
-    pct_empl_pub AS "empl.pub",
-    med_inc_house AS "med.inc.house",
-    med_inc_fam AS "med.inc.fam",
-    empl_total AS "empl.total",
-    pct_hm_electric AS "hm.electric",
-    hm_total AS "hm.total",
-    year,
-    pct_asian_island AS "asian.island"
-FROM census_state;

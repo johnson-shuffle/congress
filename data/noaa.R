@@ -82,16 +82,17 @@ message("Total daily state observations: ", nrow(df_noaa))
 
 # ----- execute DDL and populate database --------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "noaa-degree-days.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "noaa-degree-days.sql"))
 dbAppendTable(db, "noaa_degree_days", as.data.frame(df_noaa))
 message("Successfully inserted ", nrow(df_noaa), " rows into noaa_degree_days.")
+execute_sql_file(db, file.path(path_sql, "views", "noaa-state-degree-days-vw.sql"))
 
 # ----- verification -----------------------------------------------------------
 
 n_daily <- dbGetQuery(db, "SELECT count(*) AS n FROM noaa_degree_days")$n
-n_annual <- dbGetQuery(db, "SELECT count(*) AS n FROM noaa_state_degree_days")$n
+n_annual <- dbGetQuery(db, "SELECT count(*) AS n FROM noaa_state_degree_days_vw")$n
 stopifnot(n_daily == nrow(df_noaa))
 stopifnot(n_annual == length(study_years) * 48)
 
-message("Verification: ", n_daily, " daily observations and ", n_annual, " annual state summaries in noaa_state_degree_days.")
+message("Verification: ", n_daily, " daily observations and ", n_annual, " annual state summaries in noaa_state_degree_days_vw.")
 message("NOAA degree days ingestion completed successfully.")

@@ -3,7 +3,7 @@
 # Queries SQLite tables (`fec_elections`, `fec_special_elections`, `cq_margins`,
 # `crosswalk_members`) to:
 #   1. Populate `fec_margins_2014` (114th Congress general election margins)
-#   2. Create view `election_margins` (103rd–114th Congress general + special)
+#   2. Create view `election_margins_vw` (103rd–114th Congress general + special)
 # ==============================================================================
 
 source("config.R")
@@ -15,8 +15,8 @@ db <- get_db()
 
 # ----- 1. Initialize DDL schemas ----------------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "fec-margins-2014.sql"))
-execute_sql_file(db, file.path(path_sql, "election-margins.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "fec-margins-2014.sql"))
+execute_sql_file(db, file.path(path_sql, "views", "election-margins-vw.sql"))
 
 
 # ----- 2. Load 114th Congress Crosswalk & 2014 FEC Results from SQLite --------
@@ -148,7 +148,7 @@ message(sprintf(
   nrow(margins_2014_all), nrow(hou14_final), nrow(sen14_final)
 ))
 
-n_view <- dbGetQuery(db, "SELECT count(*) AS n FROM election_margins")$n
-message(sprintf("election_margins view verified: %d rows.", n_view))
+n_view <- dbGetQuery(db, "SELECT count(*) AS n FROM election_margins_vw")$n
+message(sprintf("election_margins_vw view verified: %d rows.", n_view))
 
 dbDisconnect(db)

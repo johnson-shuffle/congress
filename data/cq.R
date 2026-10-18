@@ -317,7 +317,7 @@ cq_all <- bind_rows(hou_clean, sen_clean, prez_clean, gov_clean) |>
 
 message("Total CQ election records to insert: ", nrow(cq_all))
 
-execute_sql_file(db, file.path(path_sql, "cq-elections.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "cq-elections.sql"))
 
 dbWriteTable(db, "cq_elections", cq_all, append = TRUE)
 

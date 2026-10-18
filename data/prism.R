@@ -129,7 +129,7 @@ df_clean <- df_raw |>
 
 # ----- execute DDL and populate database --------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "prism-district.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "prism-district.sql"))
 dbAppendTable(db, "prism_district", as.data.frame(df_clean))
 message("Successfully inserted ", nrow(df_clean), " rows into prism_district.")
 

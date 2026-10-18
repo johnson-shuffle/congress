@@ -158,9 +158,8 @@ message("Total congressional session records: ", nrow(all_sessions))
 
 db <- get_db()
 
-execute_sql_file(db, file.path(path_sql, "congress-sessions.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "congress-sessions.sql"))
 
 dbWriteTable(db, "congress_sessions", all_sessions, append = TRUE)
 
 message("Successfully populated congress_sessions: ", dbGetQuery(db, "SELECT count(*) FROM congress_sessions")[[1]], " rows.")
-message("Compatibility view 'congress' verified: ", dbGetQuery(db, "SELECT count(*) FROM congress")[[1]], " rows.")

@@ -4,7 +4,6 @@
 -- Source: House History (history.house.gov) and Senate Reference (senate.gov)
 -- ============================================================================
 
-DROP VIEW IF EXISTS congress;
 DROP TABLE IF EXISTS congress_sessions;
 
 CREATE TABLE congress_sessions (
@@ -22,5 +21,3 @@ CREATE TABLE congress_sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_congress_sessions_cong ON congress_sessions(congress, chamber);
-
-CREATE VIEW IF NOT EXISTS congress AS SELECT * FROM congress_sessions;

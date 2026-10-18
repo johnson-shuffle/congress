@@ -105,7 +105,7 @@ all_gen <- bind_rows(p923, p2000, p1998, p759) |>
     state_code = if_else(is.na(state_code) | state_code == "" | !state_code %in% states, NA_character_, state_code)
   )
 
-execute_sql_file(db, file.path(path_sql, "eia-generation.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "eia-generation.sql"))
 dbAppendTable(db, "eia_generation", as.data.frame(all_gen))
 message("Inserted ", nrow(all_gen), " rows into eia_generation")
 

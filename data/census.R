@@ -6,7 +6,7 @@
 #   - 109th Congress ACS Profiles (raw/census/c109_DP*.csv)
 #   - 111th Congress ACS 5-Year Profiles (raw/census/c111_DP*.csv)
 #   - 113th Congress ACS Profiles (raw/census/c113_DP*.csv)
-# Targets: census_district, census_state, and view census in congress.sqlite
+# Targets: census_district and census_state in congress.sqlite
 # ==============================================================================
 
 source("config.R")
@@ -397,7 +397,7 @@ message("State observations: ", nrow(df_state))
 
 # ----- execute DDL and populate database --------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "census-district.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "census-district.sql"))
 
 dbAppendTable(db, "census_district", as.data.frame(df_district))
 message("Inserted ", nrow(df_district), " rows into census_district.")
@@ -409,10 +409,9 @@ message("Inserted ", nrow(df_state), " rows into census_state.")
 
 n_dist <- dbGetQuery(db, "SELECT count(*) AS n FROM census_district")$n
 n_state <- dbGetQuery(db, "SELECT count(*) AS n FROM census_state")$n
-n_view <- dbGetQuery(db, "SELECT count(*) AS n FROM census")$n
 
-message("Verification: ", n_dist, " rows in census_district, ", n_state, " in census_state, ", n_view, " in view census.")
-stopifnot(n_view == nrow(all_census))
+message("Verification: ", n_dist, " rows in census_district, ", n_state, " in census_state.")
+stopifnot(n_dist + n_state == nrow(all_census))
 stopifnot(n_dist == 10028)
 stopifnot(n_state == 1173)
 

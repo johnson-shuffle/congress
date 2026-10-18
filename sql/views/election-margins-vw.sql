@@ -1,11 +1,11 @@
 -- ============================================================================
--- election_margins: Comprehensive electoral victory margins (103rd–114th Congress)
+-- election_margins_vw: Comprehensive electoral victory margins (103rd–114th Congress)
 -- Synthesizes crosswalk_members with cq_margins and fec_special_elections
 -- ============================================================================
 
-DROP VIEW IF EXISTS election_margins;
+DROP VIEW IF EXISTS election_margins_vw;
 
-CREATE VIEW election_margins AS
+CREATE VIEW election_margins_vw AS
 SELECT
     cw.congress,
     CASE 

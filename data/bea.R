@@ -173,13 +173,13 @@ bea_pop <- sa1_long |>
 
 db <- get_db()
 
-execute_sql_file(db, file.path(path_sql, "bea-gsp.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "bea-gsp.sql"))
 dbWriteTable(db, "bea_gsp", bea_gsp, append = TRUE)
 
-execute_sql_file(db, file.path(path_sql, "bea-gsi.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "bea-gsi.sql"))
 dbWriteTable(db, "bea_gsi", bea_gsi, append = TRUE)
 
-execute_sql_file(db, file.path(path_sql, "bea-pop.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "bea-pop.sql"))
 dbWriteTable(db, "bea_pop", bea_pop, append = TRUE)
 
 message("Successfully populated bea_gsp: ", dbGetQuery(db, "SELECT count(*) FROM bea_gsp")[[1]], " rows.")

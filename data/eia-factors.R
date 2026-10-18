@@ -44,7 +44,7 @@ f2 <- read_csv(f2_path, col_types = cols()) |>
     notes = notes
   )
 
-execute_sql_file(db, file.path(path_sql, "eia-factors.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "eia-factors.sql"))
 dbAppendTable(db, "eia_fuel_factors", as.data.frame(f1))
 dbAppendTable(db, "eia_fuel_factors_old", as.data.frame(f2))
 

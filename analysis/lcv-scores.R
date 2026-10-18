@@ -126,7 +126,7 @@ congress_scores <- scored_votes |>
 
 # ----- 6. write to database ---------------------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "lcv-scores.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "lcv-scores.sql"))
 
 dbWriteTable(db, "lcv_scores", annual_scores, append = TRUE)
 dbWriteTable(db, "lcv_congress_scores", congress_scores, append = TRUE)

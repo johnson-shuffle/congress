@@ -70,10 +70,10 @@ bls_cpi <- cpi_raw |>
 
 db <- get_db()
 
-execute_sql_file(db, file.path(path_sql, "bls-unempl.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "bls-unempl.sql"))
 dbWriteTable(db, "bls_unempl", bls_unempl, append = TRUE)
 
-execute_sql_file(db, file.path(path_sql, "bls-cpi.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "bls-cpi.sql"))
 dbWriteTable(db, "bls_cpi", bls_cpi, append = TRUE)
 
 message("Successfully populated bls_unempl: ", dbGetQuery(db, "SELECT count(*) FROM bls_unempl")[[1]], " rows.")

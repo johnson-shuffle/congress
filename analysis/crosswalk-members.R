@@ -303,7 +303,7 @@ crosswalk_members <- vm |>
 
 # ----- 4. write synthesized crosswalk to database ---------------------------
 
-execute_sql_file(db, file.path(path_sql, "crosswalk-members.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "crosswalk-members.sql"))
 dbWriteTable(db, "crosswalk_members", crosswalk_members, append = TRUE)
 
 dbDisconnect(db)

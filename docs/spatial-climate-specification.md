@@ -94,7 +94,7 @@ The PRISM Climate Group (Oregon State University) produces gridded meteorologica
 
 1. **Raw Sources (`raw/prism/`):** Monthly and daily PRISM gridded ASCII rasters (`.asc` / `.bil`) organized in domain folders (`ppt/`, `tmin/`, `tmax/`, `tmean/`). Genuine raw rasters only—no compiled `.Rda` files are stored in `raw/`.
 2. **Ingestion ETL ([`data/prism.R`](file:///Users/jrj/Projects/congress/data/prism.R)):** Applies `terra::extract()` with area-weighted polygon averaging against UCLA Congressional District shapefiles (`raw/cd-maps/`) to populate base table `prism_district` in `congress.sqlite` (109,632 monthly records, 1993–2013).
-3. **Climate Synthesis ([`analysis/prism.R`](file:///Users/jrj/Projects/congress/analysis/prism.R)):** Converts temperatures to Fahrenheit and aggregates annual indicators into analytical view `prism_district_annual`:
+3. **Climate Synthesis ([`analysis/prism.R`](file:///Users/jrj/Projects/congress/analysis/prism.R)):** Converts temperatures to Fahrenheit and aggregates annual indicators into analytical view `prism_district_annual_vw`:
    - Mean daily temperature in Fahrenheit:
      $$T_F = \frac{9}{5} \bar{T}_C + 32$$
    - Base temperature threshold: $T_{\text{base}} = 65^\circ\text{F} \approx 18.33^\circ\text{C}$.
@@ -102,7 +102,7 @@ The PRISM Climate Group (Oregon State University) produces gridded meteorologica
      $$\text{CDD}_t = \max(0, T_{F, t} - 65)$$
    - **Heating Degree Days (HDD):**
      $$\text{HDD}_t = \max(0, 65 - T_{F, t})$$
-   - Annual totals are accumulated across monthly observations into `prism_district_annual` (9,073 CONUS district-year observations).
+   - Annual totals are accumulated across monthly observations into `prism_district_annual_vw` (9,073 CONUS district-year observations).
 
 ---
 
@@ -110,7 +110,7 @@ The PRISM Climate Group (Oregon State University) produces gridded meteorologica
 
 State-level heating and cooling degree days are ingested directly from NOAA Climate Prediction Center via [`data/noaa.R`](file:///Users/jrj/Projects/congress/data/noaa.R):
 - Table `noaa_degree_days`: 420,768 daily observations across 48 CONUS states (1993–2016).
-- View `noaa_state_degree_days`: 1,152 annual state-level aggregations.
+- View `noaa_state_degree_days_vw`: 1,152 annual state-level aggregations.
 
 ---
 

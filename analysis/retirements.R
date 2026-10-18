@@ -96,7 +96,7 @@ retirements <- members |>
 
 # ----- 4. write to database ---------------------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "retirements.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "retirements.sql"))
 
 dbWriteTable(db, "retirements", retirements, append = TRUE)
 

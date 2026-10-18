@@ -54,7 +54,7 @@ df_plants <- raw_plants |>
 
 # ----- execute DDL and populate table -----------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "eia-plants.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "eia-plants.sql"))
 dbAppendTable(db, "eia_plants", as.data.frame(df_plants))
 message("Inserted ", nrow(df_plants), " rows into eia_plants")
 

@@ -203,7 +203,7 @@ margins_all <- bind_rows(hou_margins, sen_margins)
 
 message("Total margin records to insert: ", nrow(margins_all))
 
-execute_sql_file(db, file.path(path_sql, "cq-margins.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "cq-margins.sql"))
 
 dbWriteTable(db, "cq_margins", margins_all, append = TRUE)
 

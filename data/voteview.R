@@ -23,7 +23,7 @@ db <- get_db()
 
 # ----- 1. voteview_members ----------------------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "voteview-members.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "voteview-members.sql"))
 
 message("Ingesting voteview_members...")
 fetch_voteview_members <- function(congress, chamber_code) {
@@ -218,7 +218,7 @@ existing_info <- if (dbExistsTable(db, "voteview_info")) {
 }
 
 if (existing_info == 0L) {
-  execute_sql_file(db, file.path(path_sql, "voteview-info.sql"))
+  execute_sql_file(db, file.path(path_sql, "tables", "voteview-info.sql"))
 
   fetch_rollcalls <- function(congress, chamber_code) {
     fname <- sprintf("%s%03d_rollcalls.csv", chamber_code, congress)
@@ -278,7 +278,7 @@ existing_cast <- if (dbExistsTable(db, "voteview_cast")) {
 }
 
 if (existing_cast == 0L) {
-  execute_sql_file(db, file.path(path_sql, "voteview-cast.sql"))
+  execute_sql_file(db, file.path(path_sql, "tables", "voteview-cast.sql"))
 
   fetch_votes <- function(congress, chamber_code) {
     fname <- sprintf("%s%03d_votes.csv", chamber_code, congress)

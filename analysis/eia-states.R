@@ -85,7 +85,7 @@ df_states <- full_join(prod, pr_long, by = c("state_code", "year")) |>
   filter(state_code %in% states) |>
   arrange(state_code, year)
 
-execute_sql_file(db, file.path(path_sql, "eia-states.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "eia-states.sql"))
 dbAppendTable(db, "eia_states", as.data.frame(df_states))
 message("Inserted ", nrow(df_states), " rows into eia_states")
 

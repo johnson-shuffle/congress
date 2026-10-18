@@ -97,7 +97,7 @@ message("Total plant-district records generated: ", nrow(df_all))
 
 # ----- execute DDL and populate database --------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "eia-plants-district.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "eia-plants-district.sql"))
 dbAppendTable(db, "eia_plants_district", as.data.frame(df_all))
 message("Successfully inserted ", nrow(df_all), " rows into eia_plants_district.")
 

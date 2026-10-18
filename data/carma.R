@@ -60,7 +60,7 @@ carma_district <- regions |>
   arrange(fips, district_code)
 
 # Execute DDL
-execute_sql_file(db, file.path(path_sql, "carma-district.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "carma-district.sql"))
 
 # Insert into carma_district
 dbAppendTable(db, "carma_district", as.data.frame(carma_district))
@@ -103,7 +103,7 @@ carma_plants <- plants |>
   arrange(plant_id)
 
 # Execute DDL
-execute_sql_file(db, file.path(path_sql, "carma-plants.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "carma-plants.sql"))
 
 # Insert into carma_plants
 dbAppendTable(db, "carma_plants", as.data.frame(carma_plants))
@@ -112,15 +112,12 @@ message("Inserted ", nrow(carma_plants), " rows into carma_plants")
 # ----- sanity checks ----------------------------------------------------------
 
 n_dist <- dbGetQuery(db, "SELECT count(*) AS n FROM carma_district")$n
-n_view <- dbGetQuery(db, "SELECT count(*) AS n FROM carma")$n
 n_plants <- dbGetQuery(db, "SELECT count(*) AS n FROM carma_plants")$n
 
 message("Verification:")
 message("  carma_district: ", n_dist, " districts")
-message("  carma (view):   ", n_view, " observations (2004 + 2009)")
 message("  carma_plants:   ", n_plants, " US power plants")
 
 stopifnot(n_dist == 435)
-stopifnot(n_view == 870)
 stopifnot(n_plants == 8690)
 message("CARMA ingestion completed successfully.")

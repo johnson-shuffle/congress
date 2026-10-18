@@ -17,9 +17,9 @@ db <- get_db()
 
 # ----- 1. Initialize tables from DDL ------------------------------------------
 
-execute_sql_file(db, file.path(path_sql, "fec-special-elections.sql"))
-execute_sql_file(db, file.path(path_sql, "fec-presidential-margins.sql"))
-execute_sql_file(db, file.path(path_sql, "fec-elections.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "fec-special-elections.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "fec-presidential-margins.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "fec-elections.sql"))
 
 message("DDL schemas initialized.")
 

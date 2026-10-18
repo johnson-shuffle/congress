@@ -21,7 +21,7 @@ db <- get_db()
 # ----- 1. Ingest cffr_agency -------------------------------------------------
 
 message("Ingesting cffr_agency (1993-2010)...")
-execute_sql_file(db, file.path(path_sql, "cffr-agency.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "cffr-agency.sql"))
 
 agen_files <- list.files(raw_cffr_dir, pattern = "agen[.]txt$", full.names = TRUE) |>
   sort()
@@ -47,7 +47,7 @@ message(sprintf("Loaded %d agency records into 'cffr_agency'.", nrow(all_agencie
 # ----- 2. Ingest cffr_program ------------------------------------------------
 
 message("Ingesting cffr_program (1993-2010)...")
-execute_sql_file(db, file.path(path_sql, "cffr-program.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "cffr-program.sql"))
 
 prog_files <- list.files(raw_cffr_dir, pattern = "prog[.]txt$", full.names = TRUE) |>
   sort()
@@ -73,7 +73,7 @@ message(sprintf("Loaded %d program records into 'cffr_program'.", nrow(all_progr
 # ----- 3. Ingest cffr spending outlays ---------------------------------------
 
 message("Ingesting cffr geographic spending outlays (1993-2010)...")
-execute_sql_file(db, file.path(path_sql, "cffr.sql"))
+execute_sql_file(db, file.path(path_sql, "tables", "cffr.sql"))
 
 cols_spec <- cols(
   FIPSST = col_character(),

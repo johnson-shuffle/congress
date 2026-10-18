@@ -4,7 +4,6 @@
 -- Source: raw/voteview/{H,S}{congress}_rollcalls.csv
 -- ============================================================================
 
-DROP VIEW IF EXISTS voteview_rollcalls;
 DROP TABLE IF EXISTS voteview_info;
 
 CREATE TABLE voteview_info (
@@ -32,6 +31,3 @@ CREATE TABLE voteview_info (
 
 CREATE INDEX IF NOT EXISTS idx_vv_info_clerk ON voteview_info(congress, chamber, clerk_rollnumber);
 CREATE INDEX IF NOT EXISTS idx_vv_info_date ON voteview_info(date);
-
-CREATE VIEW IF NOT EXISTS voteview_rollcalls AS 
-SELECT * FROM voteview_info;
