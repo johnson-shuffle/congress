@@ -47,7 +47,7 @@ The pipeline transforms 27 upstream raw data feeds (~5.1 GB) into an integrated 
 
 ```mermaid
 flowchart TD
-    subgraph Raw Sources ["27 Upstream Raw Feeds (raw/)"]
+    subgraph raw_sources ["27 Upstream Raw Feeds (raw/)"]
         R1["@unitedstates YAML<br/>Rosters & Terms"]
         R2["Voteview Roll Calls,<br/>Votes & Bio"]
         R3["CQ & FEC Election<br/>Returns & Margins"]
@@ -58,11 +58,11 @@ flowchart TD
         R8["CFFR Federal Spending<br/>Outlays & Programs"]
     end
 
-    subgraph Bootstrap ["Bootstrap Layer (sql/states.sql)"]
+    subgraph bootstrap ["Bootstrap Layer (sql/states.sql)"]
         S0["states<br/>(FIPS, Codes, Regions)"]
     end
 
-    subgraph Ingestion ["Base Ingestion Layer (data/*.R -> sql/tables/*.sql)"]
+    subgraph ingestion ["Base Ingestion Layer (data/*.R -> sql/tables/*.sql)"]
         I1["govtrack_info<br/>govtrack_term"]
         I2["voteview_members<br/>voteview_info<br/>voteview_cast"]
         I3["cq_elections<br/>fec_elections<br/>fec_special_elections"]
@@ -74,7 +74,7 @@ flowchart TD
         I9["lcv_votes"]
     end
 
-    subgraph Synthesis ["Secondary Synthesis Layer (synthesis/*.R)"]
+    subgraph synthesis ["Secondary Synthesis Layer (synthesis/*.R)"]
         X1["crosswalk_members<br/>(99.91% OpenSecrets match)"]
         X2["cq_margins<br/>fec_margins_2014<br/>election_margins_vw"]
         X3["eia_plants_district<br/>eia_district_emissions<br/>eia_states"]
@@ -82,27 +82,27 @@ flowchart TD
         X5["lcv_scores<br/>lcv_congress_scores<br/>retirements"]
     end
 
-    subgraph Panels ["Master Panel Assembly (synthesis/panel-*.R)"]
+    subgraph panels ["Master Panel Assembly (synthesis/panel-*.R)"]
         P1["panel_house_annual<br/>(10,189 rows x 127 cols)"]
         P2["panel_senate_annual<br/>(2,360 rows x 127 cols)"]
     end
 
-    subgraph Views ["Analytical Roll-Call Views (sql/views/*-vw.sql)"]
+    subgraph views ["Analytical Roll-Call Views (sql/views/*-vw.sql)"]
         V1["panel_house_vw<br/>(180,418 vote records)"]
         V2["panel_senate_vw<br/>(28,868 vote records)"]
     end
 
-    subgraph Models ["Bayesian Estimation Layer (analysis/)"]
+    subgraph models ["Bayesian Estimation Layer (analysis/)"]
         M1["analysis/stan/hierarchical-rollcall.stan<br/>Hierarchical 2PL IRT Model"]
         M2["analysis/stan/inducements-rollcall.stan<br/>Vote-Level Inducements Model"]
     end
 
-    Raw Sources --> Bootstrap
-    Bootstrap --> Ingestion
-    Ingestion --> Synthesis
-    Synthesis --> Panels
-    Panels --> Views
-    Views --> Models
+    raw_sources --> bootstrap
+    bootstrap --> ingestion
+    ingestion --> synthesis
+    synthesis --> panels
+    panels --> views
+    views --> models
 ```
 
 ---
@@ -141,7 +141,7 @@ Traditional two-parameter logistic (2PL) item response theory (IRT) spatial voti
 **Solution:**
 - **Structural Prior Identification:** Rather than applying fragile post-hoc sign flips, [`analysis/stan/hierarchical-rollcall.stan`](analysis/stan/hierarchical-rollcall.stan) identifies polarity structurally through an informative hierarchical prior:
   $$\theta_i \sim \mathcal{N}(X_i \gamma, \sigma_t^2)$$
-  $$\mu_{\gamma}[\text{party\_r}] = 2.0, \quad \sigma_{\gamma}[\text{party\_r}] = 1.0$$
+  $$\mu_{\gamma}[\text{party}_{\text{r}}] = 2.0, \quad \sigma_{\gamma}[\text{party}_{\text{r}}] = 1.0$$
   $$\mu_{\gamma}[\text{intercept}] = -1.0, \quad \sigma_{\gamma}[\text{intercept}] = 1.0$$
 - **Polarity-Aligned Initialization:** MCMC chains are initialized with Democrats at $\theta^{(0)} = -1$ and Republicans at $\theta^{(0)} = +1$, locking chains into the standard Left/Right ideological orientation.
 - **Non-Centered Parameterization:** Latent member parameters are parameterized as $\theta_{\text{raw}} \sim \mathcal{N}(0, 1)$, eliminating Neal's Funnel degeneracies in Stan's No-U-Turn Sampler (NUTS).
