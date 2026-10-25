@@ -79,7 +79,7 @@ To track local energy economies over time, the pipeline maps 7,258 power plants 
 
 ### 2.2 District-Level Generation & Emissions Synthesis (`eia_district_emissions`)
 
-Annual congressional district energy generation and emissions are aggregated in [`analysis/eia-district-emissions.R`](file:///Users/jrj/Projects/congress/analysis/eia-district-emissions.R):
+Annual congressional district energy generation and emissions are aggregated in [`synthesis/eia-district-emissions.R`](file:///Users/jrj/Projects/congress/synthesis/eia-district-emissions.R):
 
 $$\text{Generation}_{c, d, y} = \sum_{p \in (c, d)} \text{Net Generation MWh}_{p, y}$$
 $$\text{CO}_{2; c, d, y} = \sum_{p \in (c, d)} \text{CO}_{2}\text{ Metric Tons}_{p, y}$$
@@ -94,7 +94,7 @@ The PRISM Climate Group (Oregon State University) produces gridded meteorologica
 
 1. **Raw Sources (`raw/prism/`):** Monthly and daily PRISM gridded ASCII rasters (`.asc` / `.bil`) organized in domain folders (`ppt/`, `tmin/`, `tmax/`, `tmean/`). Genuine raw rasters only—no compiled `.Rda` files are stored in `raw/`.
 2. **Ingestion ETL ([`data/prism.R`](file:///Users/jrj/Projects/congress/data/prism.R)):** Applies `terra::extract()` with area-weighted polygon averaging against UCLA Congressional District shapefiles (`raw/cd-maps/`) to populate base table `prism_district` in `congress.sqlite` (109,632 monthly records, 1993–2013).
-3. **Climate Synthesis ([`analysis/prism.R`](file:///Users/jrj/Projects/congress/analysis/prism.R)):** Converts temperatures to Fahrenheit and aggregates annual indicators into analytical view `prism_district_annual_vw`:
+3. **Climate Synthesis ([`synthesis/prism.R`](file:///Users/jrj/Projects/congress/synthesis/prism.R)):** Converts temperatures to Fahrenheit and aggregates annual indicators into analytical view `prism_district_annual_vw`:
    - Mean daily temperature in Fahrenheit:
      $$T_F = \frac{9}{5} \bar{T}_C + 32$$
    - Base temperature threshold: $T_{\text{base}} = 65^\circ\text{F} \approx 18.33^\circ\text{C}$.
@@ -142,5 +142,5 @@ $$\text{Real Dollars}_{\text{base}} = \text{Nominal Dollars}_t \times \left( \fr
 | **2016** | **240.007** | 0.9085 | **1.0000** |
 
 ### 3.3 Pipeline Applications
-- In [`analysis/eia-states.R`](file:///Users/jrj/Projects/congress/analysis/eia-states.R), nominal fuel and electricity prices from `eia_prices` are deflated to real dollars per MMBtu before calculating state-level energy prices.
-- In master panel synthesis (`analysis/panel.R`), district CFFR federal spending and PAC receipts are deflated to real constant dollars to ensure cross-temporal comparability across the 103rd through 114th Congresses.
+- In [`synthesis/eia-states.R`](file:///Users/jrj/Projects/congress/synthesis/eia-states.R), nominal fuel and electricity prices from `eia_prices` are deflated to real dollars per MMBtu before calculating state-level energy prices.
+- In master panel synthesis ([`synthesis/panel-house.R`](file:///Users/jrj/Projects/congress/synthesis/panel-house.R) & [`synthesis/panel-senate.R`](file:///Users/jrj/Projects/congress/synthesis/panel-senate.R)), district CFFR federal spending and PAC receipts are deflated to real constant dollars to ensure cross-temporal comparability across the 103rd through 114th Congresses.

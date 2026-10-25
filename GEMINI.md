@@ -17,11 +17,12 @@ The repository builds a consolidated data store uniting federal spending, electo
 ### 2. Repository Layout & Pipeline Roles
 - **`raw/`**: Strictly genuine upstream raw source files in lowercase domain folders (e.g., `raw/cq/`, `raw/govtrack/`, `raw/eia/`). **100% ignored by git. Never store intermediate or compiled `.Rda` / `.RData` files in `raw/`.**
 - **`data/`**: Ingestion ETL scripts that parse genuine raw sources into SQLite database base tables (e.g., `data/states.R`, `data/eia-plants.R`, `data/eia-seds.R`). Scripts in `data/` must not depend on other database tables, with the sole exception of the bootstrap `states` lookup table (`sql/states.sql` / `data/states.R`), which must be run first.
-- **`analysis/`**: Synthesis and modeling scripts that query database tables to construct crosswalks, master panels, and run models (e.g., `analysis/crosswalk-members.R`, `analysis/fec-margins.R`, `analysis/eia-states.R`, `analysis/eia-generation.R`).
+- **`synthesis/`**: Secondary ETL and panel assembly scripts that query database base tables to construct member crosswalks, derived features, and master panels (e.g., `synthesis/crosswalk-members.R`, `synthesis/fec-margins.R`, `synthesis/opensecrets.R`, `synthesis/panel-house.R`, `synthesis/panel-senate.R`).
+- **`analysis/`**: Substantive econometric modeling scripts, Bayesian Stan models, MCMC sampling, counterfactuals, and paper figure/table generation.
 - **`sql/`**: Modular SQLite DDL files in strict `kebab-case`:
   - **`sql/states.sql`**: Foundational bootstrap schema at the root of `sql/`, initialized first before any other tables.
-  - **`sql/tables/`**: Physical table schemas (e.g., `sql/tables/eia-plants.sql`, `sql/tables/eia-states.sql`).
-  - **`sql/views/`**: Analytical SQLite view definitions in dedicated `*-vw.sql` files (e.g., `sql/views/election-margins-vw.sql`) with the `_vw` suffix on the view name (e.g., `election_margins_vw`).
+  - **`sql/tables/`**: Physical table schemas (e.g., `sql/tables/eia-plants.sql`, `sql/tables/panel-house-annual.sql`).
+  - **`sql/views/`**: Analytical SQLite view definitions in dedicated `*-vw.sql` files (e.g., `sql/views/panel-house-vw.sql`) with the `_vw` suffix on the view name (e.g., `panel_house_vw`).
 - **`docs/`**: Technical documentation, data dictionaries, and architectural specifications.
 
 ### 3. Code Style & Naming Conventions
@@ -55,9 +56,9 @@ The following tables and views are populated, verified, and active in `congress.
 | `voteview_members`| 6,567 | `data/voteview.R` (`sql/tables/voteview-members.sql`) | `raw/voteview/H*_members.csv`, `S*_members.csv` |
 | `voteview_info` | 23,724 | `data/voteview.R` (`sql/tables/voteview-info.sql`) | `raw/voteview/H*_rollcalls.csv`, `S*_rollcalls.csv` |
 | `voteview_cast` | 7,674,580 | `data/voteview.R` (`sql/tables/voteview-cast.sql`) | `raw/voteview/H*_votes.csv`, `S*_votes.csv` |
-| `crosswalk_members`| 6,567 | `analysis/crosswalk-members.R` (`sql/tables/crosswalk-members.sql`) | SQLite join (`govtrack_info` + `govtrack_term` + `voteview_members`) |
+| `crosswalk_members`| 6,567 | `synthesis/crosswalk-members.R` (`sql/tables/crosswalk-members.sql`) | SQLite join (`govtrack_info` + `govtrack_term` + `voteview_members`) |
 | `cq_elections` | 6,945 | `data/cq.R` (`sql/tables/cq-elections.sql`) | `raw/cq/` election exports |
-| `cq_margins` | 5,596 | `analysis/cq-margins.R` (`sql/tables/cq-margins.sql`) | SQLite query (`cq_elections`) |
+| `cq_margins` | 5,596 | `synthesis/cq-margins.R` (`sql/tables/cq-margins.sql`) | SQLite query (`cq_elections`) |
 | `bls_unempl` | 1,989 | `data/bls.R` (`sql/tables/bls-unempl.sql`) | `raw/bls/unemp.txt` |
 | `bls_cpi` | 103 | `data/bls.R` (`sql/tables/bls-cpi.sql`) | `raw/bls/cpi.txt` |
 | `bea_gsp` | 797,130 | `data/bea.R` (`sql/tables/bea-gsp.sql`) | `raw/bea/gsp_naics_all.csv`, `gsp_sic_all.csv` |
@@ -72,12 +73,12 @@ The following tables and views are populated, verified, and active in `congress.
 | `eia_seds` | 1,524,961 | `data/eia-seds.R` (`sql/tables/eia-seds.sql`) | `raw/eia/Complete_SEDS.csv` |
 | `eia_prices` | 250,518 | `data/eia-seds.R` (`sql/tables/eia-seds.sql`) | `raw/eia/eia_prices.csv` |
 | `eia_survey_gen` | 218,949 | `data/eia-survey.R` (`sql/tables/eia-survey.sql`) | `raw/eia/f759*u.xls`, `F906*.csv/xls`, `f923_*.csv` |
-| `eia_states` | 2,244 | `analysis/eia-states.R` (`sql/tables/eia-states.sql`) | SQLite query (`eia_seds` + `eia_prices` + `bls_cpi`) |
-| `eia_generation` | 217,971 | `analysis/eia-generation.R` (`sql/tables/eia-generation.sql`) | SQLite query (`eia_survey_gen` + `eia_fuel_factors`) |
+| `eia_states` | 2,244 | `synthesis/eia-states.R` (`sql/tables/eia-states.sql`) | SQLite query (`eia_seds` + `eia_prices` + `bls_cpi`) |
+| `eia_generation` | 217,971 | `synthesis/eia-generation.R` (`sql/tables/eia-generation.sql`) | SQLite query (`eia_survey_gen` + `eia_fuel_factors`) |
 | `lcv_votes` | 1,296 | `data/lcv-votes.R` (`sql/tables/lcv-votes.sql`) | `raw/lcv/lcv-votes.csv` |
-| `lcv_scores` | 12,430 | `analysis/lcv-scores.R` (`sql/tables/lcv-scores.sql`) | SQLite query (`lcv_votes` + `voteview_info` + `voteview_cast`) |
-| `lcv_congress_scores` | 6,560 | `analysis/lcv-scores.R` (`sql/tables/lcv-scores.sql`) | SQLite query (`lcv_votes` + `voteview_info` + `voteview_cast`) |
-| `retirements` | 6,567 | `analysis/retirements.R` (`sql/tables/retirements.sql`) | SQLite query (`crosswalk_members` + `raw/retirements.csv`) |
+| `lcv_scores` | 12,430 | `synthesis/lcv-scores.R` (`sql/tables/lcv-scores.sql`) | SQLite query (`lcv_votes` + `voteview_info` + `voteview_cast`) |
+| `lcv_congress_scores` | 6,560 | `synthesis/lcv-scores.R` (`sql/tables/lcv-scores.sql`) | SQLite query (`lcv_votes` + `voteview_info` + `voteview_cast`) |
+| `retirements` | 6,567 | `synthesis/retirements.R` (`sql/tables/retirements.sql`) | SQLite query (`crosswalk_members` + `raw/retirements.csv`) |
 | `cffr_agency` | 9,979 | `data/cffr.R` (`sql/tables/cffr-agency.sql`) | `raw/cffr/*agen.txt` |
 | `cffr_program`| 39,191 | `data/cffr.R` (`sql/tables/cffr-program.sql`) | `raw/cffr/*prog.txt` |
 | `cffr` | 7,556,231 | `data/cffr.R` (`sql/tables/cffr.sql`) | `raw/cffr/*CFFIND/*.csv` |
@@ -87,8 +88,8 @@ The following tables and views are populated, verified, and active in `congress.
 | `crp_pacs` | 3,880,045 | `data/opensecrets.R` (`sql/tables/crp-pacs.sql`) | `raw/opensecrets/CampaignFin*.zip` (`pacs*.txt`) |
 | `crp_pac_other` | 1,113,501 | `data/opensecrets.R` (`sql/tables/crp-pac-other.sql`) | `raw/opensecrets/CampaignFin*.zip` (`pac_other*.txt`) |
 | `crp_indivs` | 43,441,148 | `data/opensecrets.R` (`sql/tables/crp-indivs.sql`) | `raw/opensecrets/CampaignFin*.zip` (`indivs*.txt`) |
-| `eia_plants_district` | 87,096 | `analysis/eia-plants-district.R` (`sql/tables/eia-plants-district.sql`) | SQLite query (`eia_plants` + `raw/cd-maps/districts*.zip`) |
-| `eia_district_emissions` | 9,165 | `analysis/eia-district-emissions.R` (`sql/tables/eia-district-emissions.sql`) | SQLite query (`eia_generation` + `eia_plants_district`) |
+| `eia_plants_district` | 87,096 | `synthesis/eia-plants-district.R` (`sql/tables/eia-plants-district.sql`) | SQLite query (`eia_plants` + `raw/cd-maps/districts*.zip`) |
+| `eia_district_emissions` | 9,165 | `synthesis/eia-district-emissions.R` (`sql/tables/eia-district-emissions.sql`) | SQLite query (`eia_generation` + `eia_plants_district`) |
 | `noaa_degree_days` | 420,768 | `data/noaa.R` (`sql/tables/noaa-degree-days.sql`) | `raw/noaa/*/*.txt` (NOAA CPC FTP) |
 | `prism_district` | 109,632 | `data/prism.R` (`sql/tables/prism-district.sql`) | `raw/prism/` + `raw/cd-maps/districts*.zip` |
 | `census_district` | 10,028 | `data/census.R` (`sql/tables/census-district.sql`) | `raw/census/1990_STF3D.csv`, `c*_DP*.csv` |
@@ -96,20 +97,20 @@ The following tables and views are populated, verified, and active in `congress.
 | `fec_special_elections` | 121 | `data/fec.R` (`sql/tables/fec-special-elections.sql`) | `raw/fec/special_elections_house.csv`, `special_elections_senate.csv` |
 | `fec_presidential_margins` | 306 | `data/fec.R` (`sql/tables/fec-presidential-margins.sql`) | `raw/fec/margins_presidents.csv` |
 | `fec_elections` | 16,110 | `data/fec.R` (`sql/tables/fec-elections.sql`) | `raw/fec/results04.xls` through `results14.xls` |
-| `fec_margins_2014` | 474 | `analysis/fec-margins.R` (`sql/tables/fec-margins-2014.sql`) | SQLite query (`fec_elections` + `crosswalk_members`) |
-| `crp_contributions` | 9,044 | `analysis/opensecrets.R` (`sql/tables/crp-contributions.sql`) | SQLite query (`crp_indivs` + `crp_pacs` + `crp_categories` + `bls_cpi`) |
-| `panel_house_annual` | 10,189 | `analysis/panel-house.R` (`sql/tables/panel-house-annual.sql`) | Master panel synthesis (12 SQLite domains) |
-| `panel_senate_annual` | 2,360 | `analysis/panel-senate.R` (`sql/tables/panel-senate-annual.sql`) | Master panel synthesis (12 SQLite domains) |
+| `fec_margins_2014` | 474 | `synthesis/fec-margins.R` (`sql/tables/fec-margins-2014.sql`) | SQLite query (`fec_elections` + `crosswalk_members`) |
+| `crp_contributions` | 9,044 | `synthesis/opensecrets.R` (`sql/tables/crp-contributions.sql`) | SQLite query (`crp_indivs` + `crp_pacs` + `crp_categories` + `bls_cpi`) |
+| `panel_house_annual` | 10,189 | `synthesis/panel-house.R` (`sql/tables/panel-house-annual.sql`) | Master panel synthesis (12 SQLite domains) |
+| `panel_senate_annual` | 2,360 | `synthesis/panel-senate.R` (`sql/tables/panel-senate-annual.sql`) | Master panel synthesis (12 SQLite domains) |
 
 ### Views
 
 | Asset | Rows | Role / Pipeline Script | Source Files |
 | :--- | :--- | :--- | :--- |
 | `noaa_state_degree_days_vw` | 1,152 | `data/noaa.R` (`sql/views/noaa-state-degree-days-vw.sql`) | Analytical view on `noaa_degree_days` |
-| `prism_district_annual_vw` | 9,073 | `analysis/prism.R` (`sql/views/prism-district-annual-vw.sql`) | Analytical view on `prism_district` |
-| `election_margins_vw` | 6,567 | `analysis/fec-margins.R` (`sql/views/election-margins-vw.sql`) | Analytical view on `crosswalk_members` + `cq_margins` + `fec_margins_2014` + `fec_special_elections` |
-| `panel_house_vw` | 180,418 | `analysis/panel-house.R` (`sql/views/panel-house-vw.sql`) | Analytical view joining `panel_house_annual` + `lcv_votes` + `voteview_cast` + `voteview_info` |
-| `panel_senate_vw` | 28,868 | `analysis/panel-senate.R` (`sql/views/panel-senate-vw.sql`) | Analytical view joining `panel_senate_annual` + `lcv_votes` + `voteview_cast` + `voteview_info` |
+| `prism_district_annual_vw` | 9,073 | `synthesis/prism.R` (`sql/views/prism-district-annual-vw.sql`) | Analytical view on `prism_district` |
+| `election_margins_vw` | 6,567 | `synthesis/fec-margins.R` (`sql/views/election-margins-vw.sql`) | Analytical view on `crosswalk_members` + `cq_margins` + `fec_margins_2014` + `fec_special_elections` |
+| `panel_house_vw` | 180,418 | `synthesis/panel-house.R` (`sql/views/panel-house-vw.sql`) | Analytical view joining `panel_house_annual` + `lcv_votes` + `voteview_cast` + `voteview_info` |
+| `panel_senate_vw` | 28,868 | `synthesis/panel-senate.R` (`sql/views/panel-senate-vw.sql`) | Analytical view joining `panel_senate_annual` + `lcv_votes` + `voteview_cast` + `voteview_info` |
 
 ---
 
