@@ -140,9 +140,9 @@ All upstream data domains required by legacy `~/Projects/congress-legacy/Data/pa
 ### Completed (`Done` on Trello):
 - **Card:** `ETL: FEC Federal Elections & Margins` (ID: `6acad29abcbe99e6325b0f72`)
   - Staged genuine raw sources (`results04.xls` through `results14.xls`, `special_elections_*.csv`, `margins_presidents.csv`) into `raw/fec/`.
-  - Built raw ETL pipeline `data/fec.R`, synthesis script `analysis/fec-margins.R`, and schemas `sql/tables/fec-*.sql` + `sql/views/election-margins-vw.sql`.
+  - Built raw ETL pipeline `data/fec.R`, synthesis script `synthesis/fec-margins.R`, and schemas `sql/tables/fec-*.sql` + `sql/views/election-margins-vw.sql`.
   - Ingested `fec_special_elections` (121 rows), `fec_presidential_margins` (306 rows), and `fec_elections` (16,110 candidate records) via `data/fec.R`.
-  - Synthesized `fec_margins_2014` (474 rows) and master analytical view `election_margins_vw` (6,567 rows) via `analysis/fec-margins.R`.
+  - Synthesized `fec_margins_2014` (474 rows) and master analytical view `election_margins_vw` (6,567 rows) via `synthesis/fec-margins.R`.
 - **Card:** `Migrate: Census & STF3D District Demographics` (ID: `6aca85d4cf073c440abc738c`)
   - Migrated genuine raw sources (`1990_STF3D.csv`, `c106_DP*.csv` through `c113_DP*.csv`) into `raw/census/`.
   - Built unified modern ETL pipeline `data/census.R` and schema `sql/tables/census-district.sql`.
@@ -161,25 +161,33 @@ All upstream data domains required by legacy `~/Projects/congress-legacy/Data/pa
   - Ingested `cffr_agency` (9,979 rows), `cffr_program` (39,191 rows), and `cffr` (7,556,231 rows) spanning 1993–2010.
 - **Card:** `ETL: LCV Environmental Voting Scores` (ID: `6aca85cc3b75b0c78807a989`)
   - Ingestion: `data/lcv-votes.R` populates `lcv_votes` from raw curated `raw/lcv/lcv-votes.csv`.
-  - Synthesis: `analysis/lcv-scores.R` computes `lcv_scores` (annual) and `lcv_congress_scores` (biennial) from SQLite base tables.
+  - Synthesis: `synthesis/lcv-scores.R` computes `lcv_scores` (annual) and `lcv_congress_scores` (biennial) from SQLite base tables.
 - **Card:** `ETL: Voteview Roll Calls & Votes Cast` (ID: `6aca85ceba0bac5c54a419b0`)
   - Extended `data/voteview.R` to ingest `voteview_info` (23,724 roll calls) and `voteview_cast` (7,674,580 votes).
 - **Card:** `ETL: Congressional Casualties & Turnover` (ID: `6aca85cc228939089382baa9`)
   - Staged `raw/retirements.csv` (334 curated records, 103rd–114th Congress) with documentation in `data/retirements.txt`.
-  - Synthesis: `analysis/retirements.R` synthesizes `retirements` (6,567 terms) with `election_year` and `retire` flags.
+  - Synthesis: `synthesis/retirements.R` synthesizes `retirements` (6,567 terms) with `election_year` and `retire` flags.
 
 - **Card:** `5. Refactor Master Panel Assembly (Tier 3)` (ID: `6ac9ecbae38c0d1f0e0b71f7`)
-  - Synthesized candidate-level campaign contributions in `crp_contributions` (9,044 rows) via `analysis/opensecrets.R` and `sql/tables/crp-contributions.sql`.
-  - Patched `crosswalk_members` in `analysis/crosswalk-members.R` to achieve 99.91% `opensecrets_id` coverage (6,561 of 6,567 member-terms).
+  - Synthesized candidate-level campaign contributions in `crp_contributions` (9,044 rows) via `synthesis/opensecrets.R` and `sql/tables/crp-contributions.sql`.
+  - Patched `crosswalk_members` in `synthesis/crosswalk-members.R` to achieve 99.91% `opensecrets_id` coverage (6,561 of 6,567 member-terms).
   - Authored physical table schemas `sql/tables/panel-house-annual.sql` and `sql/tables/panel-senate-annual.sql` (127 standardized columns).
   - Authored analytical view definitions `sql/views/panel-house-vw.sql` and `sql/views/panel-senate-vw.sql`.
-  - Built synthesis pipelines `analysis/panel-house.R` and `analysis/panel-senate.R` uniting all 12 SQLite domains.
+  - Built synthesis pipelines `synthesis/panel-house.R` and `synthesis/panel-senate.R` uniting all 12 SQLite domains.
   - Ingested and verified `panel_house_annual` (10,189 rows × 127 cols), `panel_senate_annual` (2,360 rows × 127 cols), `panel_house_vw` (180,418 roll-call observations), and `panel_senate_vw` (28,868 roll-call observations), achieving >99.9% concordance with legacy panels.
+
+- **Card:** `6. Showcase Core Bayesian Stan Models (Tier 4)` (ID: `6ac9ecbb2fea4242fd23ce31`)
+  - Modernized Stan model code to 2.30+ standards (`array[]` syntax, `=` assignment, `std_normal()` priors, non-centered parameterization) in dedicated files:
+    - `analysis/stan/hierarchical-rollcall.stan`: 2PL IRT model with structural hierarchical regression $\theta_i \sim \mathcal{N}(X_i \gamma, \sigma_t)$.
+    - `analysis/stan/inducements-rollcall.stan`: Vote-level campaign contribution inducements model with group/vote random coefficients.
+  - Authored shared helper module `analysis/helpers.R` for standardized predictor 2-SD scaling, latent scale identification normalization across MCMC draws (`postprocess_irt_draws`), and tidy summary extraction using `posterior` and `bayesplot`.
+  - Built command-line model execution scripts `analysis/model-hierarchical.R` and `analysis/model-inducements.R` with support for chamber selection (`--house`, `--senate`), Congress filtering (`--congress`), fast smoke testing (`--test`), and CSV/RDS export to `analysis/results/`.
+  - Ingested renv dependencies: `rstan` (2.32.7), `posterior` (1.7.0), `bayesplot` (1.16.0).
+  - Validated sampling convergence, identification, and coefficient outputs directly against `congress.sqlite`.
 
 ### Active Task (`Doing` on Trello):
 - None (Sprint ready for next task).
 
 ### Next Queue Candidates (`To Do` on Trello):
-- `6. Showcase Core Bayesian Stan Models (Tier 4)` (ID: `6ac9ecbb2fea4242fd23ce31`)
 - `7. Draft Raw Data Manifest & Archival Plan` (ID: `6ac9ecbb860476d95b764f0c`)
 - `8. Write Technical Architecture README` (ID: `6ac9ecbcc1c17d7766262175`)

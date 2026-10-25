@@ -1,5 +1,6 @@
 *.RData
 *.Rda
+*.rds
 *.Rhistory
 *.Rprofile
 *.Rproj.user
@@ -11,4 +12,6 @@
 *.idea
 scratchwork.R
 raw/
+analysis/results/*.csv
+analysis/results/*.rds
 
