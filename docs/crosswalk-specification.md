@@ -15,7 +15,7 @@ The `crosswalk_members` table serves as the primary entity-resolution backbone f
 
 ## Table Schema (`crosswalk_members`)
 
-Defined in [`sql/tables/crosswalk-members.sql`](file:///Users/jrj/Projects/congress/sql/tables/crosswalk-members.sql):
+Defined in [`sql/tables/crosswalk-members.sql`](../sql/tables/crosswalk-members.sql):
 
 ```sql
 CREATE TABLE crosswalk_members (
@@ -105,16 +105,16 @@ CREATE TABLE crosswalk_members (
 
 ## ETL & Synthesis Pipeline
 - **Raw Ingestion Scripts (`data/`):**
-  - [`data/govtrack.R`](file:///Users/jrj/Projects/congress/data/govtrack.R): Ingests `@unitedstates` YAML rosters into `govtrack_info` and `govtrack_term`.
-  - [`data/voteview.R`](file:///Users/jrj/Projects/congress/data/voteview.R): Ingests Voteview CSVs into `voteview_members`.
-- **Synthesis Script (`analysis/`):**
-  - [`analysis/crosswalk-members.R`](file:///Users/jrj/Projects/congress/analysis/crosswalk-members.R): Joins `voteview_members` and `govtrack_info` directly from SQLite to construct the unified `crosswalk_members` table.
+  - [`data/govtrack.R`](../data/govtrack.R): Ingests `@unitedstates` YAML rosters into `govtrack_info` and `govtrack_term`.
+  - [`data/voteview.R`](../data/voteview.R): Ingests Voteview CSVs into `voteview_members`.
+- **Synthesis Script (`synthesis/`):**
+  - [`synthesis/crosswalk-members.R`](../synthesis/crosswalk-members.R): Joins `voteview_members` and `govtrack_info` directly from SQLite to construct the unified `crosswalk_members` table.
 - **DDL Definitions (`sql/tables/`):**
-  - [`sql/tables/govtrack-info.sql`](file:///Users/jrj/Projects/congress/sql/tables/govtrack-info.sql)
-  - [`sql/tables/govtrack-term.sql`](file:///Users/jrj/Projects/congress/sql/tables/govtrack-term.sql)
-  - [`sql/tables/voteview-members.sql`](file:///Users/jrj/Projects/congress/sql/tables/voteview-members.sql)
-  - [`sql/tables/crosswalk-members.sql`](file:///Users/jrj/Projects/congress/sql/tables/crosswalk-members.sql)
+  - [`sql/tables/govtrack-info.sql`](../sql/tables/govtrack-info.sql)
+  - [`sql/tables/govtrack-term.sql`](../sql/tables/govtrack-term.sql)
+  - [`sql/tables/voteview-members.sql`](../sql/tables/voteview-members.sql)
+  - [`sql/tables/crosswalk-members.sql`](../sql/tables/crosswalk-members.sql)
 - **Raw Input Sources (`raw/`):**
-  - [`raw/govtrack/legislators-current.yaml`](file:///Users/jrj/Projects/congress/raw/govtrack/legislators-current.yaml)
-  - [`raw/govtrack/legislators-historical.yaml`](file:///Users/jrj/Projects/congress/raw/govtrack/legislators-historical.yaml)
-  - [`raw/voteview/`](file:///Users/jrj/Projects/congress/raw/voteview/) (`H{congress}_members.csv`, `S{congress}_members.csv`)
+  - `raw/govtrack/legislators-current.yaml`
+  - `raw/govtrack/legislators-historical.yaml`
+  - `raw/voteview/` (`H{congress}_members.csv`, `S{congress}_members.csv`)

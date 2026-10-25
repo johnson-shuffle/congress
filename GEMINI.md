@@ -192,8 +192,18 @@ All upstream data domains required by legacy `~/Projects/congress-legacy/Data/pa
   - Designed open-science FAIR data deposit strategy for Zenodo / Harvard Dataverse across 3 tiers (Tier 1 core panels ~50 MB, Tier 2 frozen SQLite database ~2.5 GB, Tier 3 modular raw data tarballs ~2.8 GB) with DataCite 4.4 metadata specifications.
   - Provided dual end-to-end replication workflows for external researchers (fast replication from frozen panels vs full pipeline rebuild from raw sources).
 
+- **Card:** `8. Write Technical Architecture README` (ID: `6ac9ecbcc1c17d7766262175`)
+  - Authored comprehensive project narrative in `README.md` featuring full pipeline DAG and architecture flowcharts.
+  - Detailed solutions to the 3 core complexity challenges: unlinked entity resolution across 5 numbering systems, spatiotemporal boundary matching across 3 redistricting cycles, and Bayesian structural scale identification.
+  - Documented pipeline execution sequence emphasizing the `sql/states.sql` / `data/states.R` bootstrap lookup convention.
+  - Provided CLI execution workflows for Bayesian Stan models (`hierarchical-rollcall.stan` and `inducements-rollcall.stan`).
+  - Audited and updated all documentation cross-links in `docs/` and root to standard GitHub-compatible relative links.
+
 ### Active Task (`Doing` on Trello):
-- None (Sprint ready for next task).
+- None (Modernization sprint 1–8 complete; ready for backlog triage or wrap-up).
 
 ### Next Queue Candidates (`To Do` on Trello):
-- `8. Write Technical Architecture README` (ID: `6ac9ecbcc1c17d7766262175`)
+- None in `To Do`. Candidate backlog items on Trello:
+  - `Architecture: Refactor analysis synthesis scripts into SQL views` (ID: `6acab2c5ee15e00b864b81bf`)
+  - `Model: Bayesian Small-Area Estimation of District Electricity & CO2 Consumption` (ID: `6ad4726626cfb175bfc0523b`)
+  - `Revisit non-panel legacy data sources & auxiliary manuscript analyses` (ID: `6ad482e2bb6ab59a2beefe51`)
