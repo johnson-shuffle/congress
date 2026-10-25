@@ -201,16 +201,22 @@ prepare_hierarchical_data <- function(db, chamber = "House", max_year = 2012, mi
 
 # ----- 3. MCMC Identification & Latent Post-Processing -----------------------
 
-#' Post-normalize IRT ideal point draws for identification
-#' Standardizes theta_s ~ N(0, 1) across draws and rescales alpha, beta, gamma accordingly.
+#' Post-normalize IRT ideal point draws for identification and polarity alignment
+#' Standardizes theta_s ~ N(0, 1) across draws, rescales alpha, beta, gamma accordingly,
+#' and enforces sign/polarity identification so that the reference party/dimension is oriented
+#' correctly (party_r > 0 in the US politics left/right paradigm: Left < 0, Right > 0).
 #'
 #' @param theta_draws Matrix of draws (S x N) for ideal points
 #' @param alpha_draws Matrix of draws (S x M) for cutpoints
 #' @param beta_draws Matrix of draws (S x M) for discriminations
 #' @param gamma_draws Matrix of draws (S x K) for structural covariates
 #' @param feature_names Vector of covariate names
+#' @param positive_covar Name of covariate that must have positive sign (default "party_r")
+#' @param legislator_party Optional numeric vector of legislator party (1 = R, 0 = D) for fallback polarity check
 #' @return List of post-processed draws matrices
-postprocess_irt_draws <- function(theta_draws, alpha_draws, beta_draws, gamma_draws, feature_names) {
+postprocess_irt_draws <- function(theta_draws, alpha_draws, beta_draws, gamma_draws,
+                                  feature_names, positive_covar = "party_r",
+                                  legislator_party = NULL) {
   S <- nrow(theta_draws)
   N <- ncol(theta_draws)
   M <- ncol(alpha_draws)
@@ -222,24 +228,47 @@ postprocess_irt_draws <- function(theta_draws, alpha_draws, beta_draws, gamma_dr
   gamma_norm <- matrix(0.0, nrow = S, ncol = K)
 
   intercept_col <- which(feature_names %in% c("intercept", "(Intercept)"))
+  pos_col <- which(feature_names == positive_covar)
+  if (length(pos_col) == 0) {
+    pos_col <- which(tolower(feature_names) %in% c("party_r", "partyr"))
+  }
 
   for (s in 1:S) {
     xbar <- mean(theta_draws[s, ])
     sbar <- sd(theta_draws[s, ])
     if (is.na(sbar) || sbar == 0) sbar <- 1.0
 
-    # Rescale latent ideal points
-    theta_norm[s, ] <- (theta_draws[s, ] - xbar) / sbar
+    # 1. Rescale latent ideal points: mean 0, sd 1
+    th_s <- (theta_draws[s, ] - xbar) / sbar
 
-    # Rescale discrimination and cutpoints
-    beta_norm[s, ]  <- beta_draws[s, ] * sbar
-    alpha_norm[s, ] <- alpha_draws[s, ] - xbar * beta_draws[s, ]
+    # 2. Rescale discrimination and cutpoints
+    b_s <- beta_draws[s, ] * sbar
+    a_s <- alpha_draws[s, ] - xbar * beta_draws[s, ]
 
-    # Rescale structural coefficients
-    gamma_norm[s, ] <- gamma_draws[s, ] / sbar
+    # 3. Rescale structural coefficients
+    g_s <- gamma_draws[s, ] / sbar
     if (length(intercept_col) > 0) {
-      gamma_norm[s, intercept_col] <- (gamma_draws[s, intercept_col] - xbar) / sbar
+      g_s[intercept_col] <- (gamma_draws[s, intercept_col] - xbar) / sbar
     }
+
+    # 4. Polarity identification (reflection invariance)
+    # In the US politics left/right paradigm, Republicans are on the right (party_r > 0).
+    # If the draw landed in the inverted reflection mode, flip the signs of theta, beta, and gamma.
+    need_flip <- FALSE
+    if (length(pos_col) > 0) {
+      need_flip <- (g_s[pos_col] < 0)
+    } else if (!is.null(legislator_party) && length(legislator_party) == N) {
+      r_mean <- mean(th_s[legislator_party == 1], na.rm = TRUE)
+      d_mean <- mean(th_s[legislator_party == 0], na.rm = TRUE)
+      need_flip <- (r_mean < d_mean)
+    }
+
+    flip <- if (need_flip) -1.0 else 1.0
+
+    theta_norm[s, ] <- flip * th_s
+    beta_norm[s, ]  <- flip * b_s
+    alpha_norm[s, ] <- a_s # alpha is invariant to sign reflection: (-b)*(-th) - a == b*th - a
+    gamma_norm[s, ] <- flip * g_s
   }
 
   list(

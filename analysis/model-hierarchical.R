@@ -48,6 +48,15 @@ message(sprintf("Compiling and sampling from %s...", stan_file))
 
 t_start <- Sys.time()
 
+init_fun <- function(chain_id = 1) {
+  list(
+    theta_raw = rnorm(prep$N, 0, 0.2),
+    alpha_raw = rnorm(prep$M, 0, 0.2),
+    beta_raw  = rnorm(prep$M, 0, 0.2),
+    gamma_raw = rnorm(prep$K, 0, 0.2)
+  )
+}
+
 fit <- stan(
   file = stan_file,
   data = prep$data,
@@ -57,7 +66,7 @@ fit <- stan(
   warmup = warmup,
   cores = cores,
   seed = 314159,
-  init = "random",
+  init = init_fun,
   control = list(adapt_delta = 0.85, max_treedepth = 12)
 )
 
@@ -72,11 +81,13 @@ beta_draws  <- as.matrix(fit, pars = "beta")
 gamma_draws <- as.matrix(fit, pars = "gamma")
 
 norm_draws <- postprocess_irt_draws(
-  theta_draws  = theta_draws,
-  alpha_draws  = alpha_draws,
-  beta_draws   = beta_draws,
-  gamma_draws  = gamma_draws,
-  feature_names = prep$feature_names
+  theta_draws      = theta_draws,
+  alpha_draws      = alpha_draws,
+  beta_draws       = beta_draws,
+  gamma_draws      = gamma_draws,
+  feature_names    = prep$feature_names,
+  positive_covar   = "party_r",
+  legislator_party = prep$legislators$party_r
 )
 
 # 4. Generate tidy posterior summaries
