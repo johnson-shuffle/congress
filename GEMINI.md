@@ -98,6 +98,8 @@ The following tables and views are populated, verified, and active in `congress.
 | `fec_elections` | 16,110 | `data/fec.R` (`sql/tables/fec-elections.sql`) | `raw/fec/results04.xls` through `results14.xls` |
 | `fec_margins_2014` | 474 | `analysis/fec-margins.R` (`sql/tables/fec-margins-2014.sql`) | SQLite query (`fec_elections` + `crosswalk_members`) |
 | `crp_contributions` | 9,044 | `analysis/opensecrets.R` (`sql/tables/crp-contributions.sql`) | SQLite query (`crp_indivs` + `crp_pacs` + `crp_categories` + `bls_cpi`) |
+| `panel_house_annual` | 10,189 | `analysis/panel-house.R` (`sql/tables/panel-house-annual.sql`) | Master panel synthesis (12 SQLite domains) |
+| `panel_senate_annual` | 2,360 | `analysis/panel-senate.R` (`sql/tables/panel-senate-annual.sql`) | Master panel synthesis (12 SQLite domains) |
 
 ### Views
 
@@ -105,7 +107,9 @@ The following tables and views are populated, verified, and active in `congress.
 | :--- | :--- | :--- | :--- |
 | `noaa_state_degree_days_vw` | 1,152 | `data/noaa.R` (`sql/views/noaa-state-degree-days-vw.sql`) | Analytical view on `noaa_degree_days` |
 | `prism_district_annual_vw` | 9,073 | `analysis/prism.R` (`sql/views/prism-district-annual-vw.sql`) | Analytical view on `prism_district` |
-| `election_margins_vw` | 6,567 | `analysis/fec-margins.R` (`sql/views/election-margins-vw.sql`) | Analytical view on `crosswalk_members` + `cq_margins` + `fec_special_elections` |
+| `election_margins_vw` | 6,567 | `analysis/fec-margins.R` (`sql/views/election-margins-vw.sql`) | Analytical view on `crosswalk_members` + `cq_margins` + `fec_margins_2014` + `fec_special_elections` |
+| `panel_house_vw` | 180,418 | `analysis/panel-house.R` (`sql/views/panel-house-vw.sql`) | Analytical view joining `panel_house_annual` + `lcv_votes` + `voteview_cast` + `voteview_info` |
+| `panel_senate_vw` | 28,868 | `analysis/panel-senate.R` (`sql/views/panel-senate-vw.sql`) | Analytical view joining `panel_senate_annual` + `lcv_votes` + `voteview_cast` + `voteview_info` |
 
 ---
 
@@ -163,11 +167,16 @@ All upstream data domains required by legacy `~/Projects/congress-legacy/Data/pa
   - Staged `raw/retirements.csv` (334 curated records, 103rd–114th Congress) with documentation in `data/retirements.txt`.
   - Synthesis: `analysis/retirements.R` synthesizes `retirements` (6,567 terms) with `election_year` and `retire` flags.
 
-### Active Task (`Doing` on Trello):
 - **Card:** `5. Refactor Master Panel Assembly (Tier 3)` (ID: `6ac9ecbae38c0d1f0e0b71f7`)
   - Synthesized candidate-level campaign contributions in `crp_contributions` (9,044 rows) via `analysis/opensecrets.R` and `sql/tables/crp-contributions.sql`.
   - Patched `crosswalk_members` in `analysis/crosswalk-members.R` to achieve 99.91% `opensecrets_id` coverage (6,561 of 6,567 member-terms).
-  - Next: Build `analysis/panel-house.R` and `analysis/panel-senate.R` assembling master panel tables and analytical views directly from SQLite.
+  - Authored physical table schemas `sql/tables/panel-house-annual.sql` and `sql/tables/panel-senate-annual.sql` (127 standardized columns).
+  - Authored analytical view definitions `sql/views/panel-house-vw.sql` and `sql/views/panel-senate-vw.sql`.
+  - Built synthesis pipelines `analysis/panel-house.R` and `analysis/panel-senate.R` uniting all 12 SQLite domains.
+  - Ingested and verified `panel_house_annual` (10,189 rows × 127 cols), `panel_senate_annual` (2,360 rows × 127 cols), `panel_house_vw` (180,418 roll-call observations), and `panel_senate_vw` (28,868 roll-call observations), achieving >99.9% concordance with legacy panels.
+
+### Active Task (`Doing` on Trello):
+- None (Sprint ready for next task).
 
 ### Next Queue Candidates (`To Do` on Trello):
 - `6. Showcase Core Bayesian Stan Models (Tier 4)` (ID: `6ac9ecbb2fea4242fd23ce31`)
