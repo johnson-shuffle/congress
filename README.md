@@ -140,9 +140,15 @@ Traditional two-parameter logistic (2PL) item response theory (IRT) spatial voti
 
 **Solution:**
 - **Structural Prior Identification:** Rather than applying fragile post-hoc sign flips, [`analysis/stan/hierarchical-rollcall.stan`](analysis/stan/hierarchical-rollcall.stan) identifies polarity structurally through an informative hierarchical prior:
-  $$\theta_i \sim \mathcal{N}(X_i \gamma, \sigma_t^2)$$
-  $$\mu_{\gamma}[\text{party}_{\text{r}}] = 2.0, \quad \sigma_{\gamma}[\text{party}_{\text{r}}] = 1.0$$
-  $$\mu_{\gamma}[\text{intercept}] = -1.0, \quad \sigma_{\gamma}[\text{intercept}] = 1.0$$
+
+```math
+\begin{aligned}
+\theta_i &\sim \mathcal{N}(X_i \gamma, \sigma_t^2) \\
+\mu_{\gamma}[\text{party\_r}] &= 2.0, \quad \sigma_{\gamma}[\text{party\_r}] = 1.0 \\
+\mu_{\gamma}[\text{intercept}] &= -1.0, \quad \sigma_{\gamma}[\text{intercept}] = 1.0
+\end{aligned}
+```
+
 - **Polarity-Aligned Initialization:** MCMC chains are initialized with Democrats at $\theta^{(0)} = -1$ and Republicans at $\theta^{(0)} = +1$, locking chains into the standard Left/Right ideological orientation.
 - **Non-Centered Parameterization:** Latent member parameters are parameterized as $\theta_{\text{raw}} \sim \mathcal{N}(0, 1)$, eliminating Neal's Funnel degeneracies in Stan's No-U-Turn Sampler (NUTS).
 - **Draw Post-Processing:** [`analysis/helpers.R`](analysis/helpers.R) executes affine standardization across MCMC draws ($(\theta - \bar{\theta})/s_\theta$) to place ideal points on a normalized metric without distorting relative posterior distances.
