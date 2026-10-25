@@ -15,3 +15,7 @@ raw/
 analysis/results/*.csv
 analysis/results/*.rds
 
+# Local agent workflow & context
+GEMINI.md
+RECAP.md
+
