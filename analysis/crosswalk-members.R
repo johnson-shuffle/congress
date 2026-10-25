@@ -7,6 +7,8 @@
 
 suppressPackageStartupMessages({
   library(dplyr)
+  library(tidyr)
+  library(readr)
   library(DBI)
   library(RSQLite)
 })
@@ -68,6 +70,33 @@ gt <- dbGetQuery(
 ) |>
   as_tibble()
 
+# Query CRP candidates to match unnested FEC IDs
+cands <- dbGetQuery(
+  db,
+  "SELECT DISTINCT fec_candidate_id, osid
+   FROM crp_candidates
+   WHERE osid IS NOT NULL AND osid != ''"
+) |>
+  as_tibble()
+
+# Unnest comma-separated fec_id in govtrack_info to match against crp_candidates
+fec_osid_map <- gi |>
+  filter(!is.na(fec_id) & fec_id != "") |>
+  select(bioguide_id, fec_id) |>
+  separate_rows(fec_id, sep = ",") |>
+  mutate(fec_id = trimws(fec_id)) |>
+  inner_join(cands, by = c("fec_id" = "fec_candidate_id"), relationship = "many-to-many") |>
+  distinct(bioguide_id, osid_fec = osid)
+
+# Load curated legacy crosswalk lookup for historical 103rd–105th Congress members
+osid_lookup_file <- "raw/legislators/opensecrets-lookup.csv"
+if (file.exists(osid_lookup_file)) {
+  osid_lookup <- read_csv(osid_lookup_file, col_types = "ic", show_col_types = FALSE) |>
+    distinct(icpsr_id, osid_leg = opensecrets_id)
+} else {
+  osid_lookup <- tibble(icpsr_id = integer(), osid_leg = character())
+}
+
 # ----- 2. resolve Congress-specific terms from govtrack_term ----------------
 
 # Map each Congress (103–114) to its constitutional window [1789 + 2*(c-1), 1789 + 2*c]
@@ -103,7 +132,10 @@ party_lookup <- c(
 crosswalk_members <- vm |>
   left_join(gi, by = "bioguide_id") |>
   left_join(gt_by_cong, by = c("govtrack_id", "chamber", "congress")) |>
+  left_join(fec_osid_map, by = "bioguide_id") |>
+  left_join(osid_lookup, by = "icpsr_id") |>
   mutate(
+    opensecrets_id = coalesce(na_if(opensecrets_id, ""), osid_fec, osid_leg),
     party = coalesce(party_lookup[as.character(party_code)], as.character(party_code)),
     preferred_name = coalesce(nickname, first_name),
     full_name = coalesce(official_full_name, bio_name),

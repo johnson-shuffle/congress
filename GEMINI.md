@@ -97,6 +97,7 @@ The following tables and views are populated, verified, and active in `congress.
 | `fec_presidential_margins` | 306 | `data/fec.R` (`sql/tables/fec-presidential-margins.sql`) | `raw/fec/margins_presidents.csv` |
 | `fec_elections` | 16,110 | `data/fec.R` (`sql/tables/fec-elections.sql`) | `raw/fec/results04.xls` through `results14.xls` |
 | `fec_margins_2014` | 474 | `analysis/fec-margins.R` (`sql/tables/fec-margins-2014.sql`) | SQLite query (`fec_elections` + `crosswalk_members`) |
+| `crp_contributions` | 9,044 | `analysis/opensecrets.R` (`sql/tables/crp-contributions.sql`) | SQLite query (`crp_indivs` + `crp_pacs` + `crp_categories` + `bls_cpi`) |
 
 ### Views
 
@@ -120,7 +121,7 @@ All upstream data domains required by legacy `~/Projects/congress-legacy/Data/pa
 | **4. BEA Income / GSP** | `bea_income.Rda` | ✅ `bea_gsi`, `bea_gsp`, `bea_pop` |
 | **5. BLS CPI & Unempl** | `bls_cpi.Rda`, `bls_unempl.Rda` | ✅ `bls_cpi`, `bls_unempl` |
 | **6. Census Demographics** | `census_all.Rda` | ✅ `census_district`, `census_state` |
-| **7. CRP Contributions** | `crp_contrib_totals.Rda` (`rbind(indivs, pacs.group)`) | ✅ `crp_categories`, `crp_candidates`, `crp_committees`, `crp_pacs`, `crp_pac_other`, `crp_indivs` |
+| **7. CRP Contributions** | `crp_contrib_totals.Rda` (`rbind(indivs, pacs.group)`) | ✅ `crp_contributions`, `crp_categories`, `crp_candidates`, `crp_committees`, `crp_pacs`, `crp_pac_other`, `crp_indivs` |
 | **8. EIA Energy, Prices, CO2**| `eia_energy.Rda`, `eia_prices.Rda`, `eia_co2_district.Rda`, `eia_co2_state.Rda` | ✅ `eia_states`, `eia_seds`, `eia_prices`, `eia_district_emissions` |
 | **9. Election Margins** | `margins_house.Rda`, `margins_senate.Rda`, `special_elections_*.csv`, `margins_2014.Rda` | ✅ `cq_margins`, `fec_special_elections`, `fec_margins_2014`, `election_margins_vw` |
 | **10. Retirements** | `RollCall_retire.Rda` | ✅ `retirements` |
@@ -162,7 +163,13 @@ All upstream data domains required by legacy `~/Projects/congress-legacy/Data/pa
   - Staged `raw/retirements.csv` (334 curated records, 103rd–114th Congress) with documentation in `data/retirements.txt`.
   - Synthesis: `analysis/retirements.R` synthesizes `retirements` (6,567 terms) with `election_year` and `retire` flags.
 
+### Active Task (`Doing` on Trello):
+- **Card:** `5. Refactor Master Panel Assembly (Tier 3)` (ID: `6ac9ecbae38c0d1f0e0b71f7`)
+  - Synthesized candidate-level campaign contributions in `crp_contributions` (9,044 rows) via `analysis/opensecrets.R` and `sql/tables/crp-contributions.sql`.
+  - Patched `crosswalk_members` in `analysis/crosswalk-members.R` to achieve 99.91% `opensecrets_id` coverage (6,561 of 6,567 member-terms).
+  - Next: Build `analysis/panel-house.R` and `analysis/panel-senate.R` assembling master panel tables and analytical views directly from SQLite.
+
 ### Next Queue Candidates (`To Do` on Trello):
-- **Immediate Next Step:** Build `analysis/opensecrets.R` (and `sql/tables/crp-contributions.sql` / view) to synthesize candidate-level `crp_indivs` + `crp_pacs` contribution totals (replacing legacy `crp_contrib_totals.R`).
-- `5. Refactor Master Panel Assembly (Tier 3)` (ID: `6ac9ecbae38c0d1f0e0b71f7`)
 - `6. Showcase Core Bayesian Stan Models (Tier 4)` (ID: `6ac9ecbb2fea4242fd23ce31`)
+- `7. Draft Raw Data Manifest & Archival Plan` (ID: `6ac9ecbb860476d95b764f0c`)
+- `8. Write Technical Architecture README` (ID: `6ac9ecbcc1c17d7766262175`)
