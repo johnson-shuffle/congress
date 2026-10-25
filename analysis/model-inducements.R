@@ -157,6 +157,17 @@ dataForStan <- list(
 stan_file <- "analysis/stan/inducements-rollcall.stan"
 message(sprintf("Compiling and sampling from %s...", stan_file))
 
+# Matching legacy initsForStan: starts theta_raw aligned with party prior
+inits_for_stan <- function(chain_id = 1) {
+  set.seed(chain_id * 1000 + 42)
+  list(
+    theta_raw = sapply(mu_t, function(p) rnorm(1, p, 1.0)),
+    alpha_raw = rnorm(M, 0, 1.0),
+    beta_raw  = rnorm(M, 0, 1.0),
+    gamma_raw = array(rnorm(L * K, 0, 1.0), dim = c(L, K))
+  )
+}
+
 t_start <- Sys.time()
 
 fit <- stan(
@@ -168,7 +179,7 @@ fit <- stan(
   warmup = warmup,
   cores = cores,
   seed = 314159,
-  init = "random",
+  init = lapply(1:chains, inits_for_stan),
   control = list(adapt_delta = 0.85, max_treedepth = 12)
 )
 
