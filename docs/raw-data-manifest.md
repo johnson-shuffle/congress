@@ -1,8 +1,8 @@
-# Upstream Raw Data Manifest & Open Science Archival Plan
+# Upstream Raw Data Manifest & Replication Inventory
 
 ## 1. Executive Summary & Pipeline Architecture
 
-This document provides a comprehensive inventory and replication manifest for the 27 upstream raw data feeds feeding the modernized congressional research pipeline (`congress.sqlite`). It establishes provenance, canonical upstream endpoints, ingestion schemas, licensing conditions, and archival preservation specifications in accordance with **FAIR principles** (Findable, Accessible, Interoperable, Reusable).
+This document provides a comprehensive inventory and replication manifest for the 27 upstream raw data feeds feeding the modernized congressional research pipeline (`congress.sqlite`). It establishes provenance, canonical upstream endpoints, ingestion schemas, licensing conditions, and step-by-step pipeline execution instructions.
 
 ### 1.1 Data Pipeline Philosophy
 
@@ -395,87 +395,25 @@ In addition to the 27 core panel feeds documented above, 9 auxiliary data source
 
 ---
 
-## 5. Open Science Archival & Preservation Plan
+## 5. End-to-End Replication Instructions
 
-To ensure perpetual reproducibility, persistent citation, and seamless public verification without copyright infringement, research artifacts will be deposited into a permanent repository (**Zenodo** and/or **Harvard Dataverse**) under a structured three-tier architecture.
-
-```
-+===================================================================================+
-|               RECOMMENDED THREE-TIER DEPOSIT SPECIFICATION                         |
-+===================================================================================+
-
-  [TIER 1: Core Research Panel Replication Package] (Zenodo / Harvard Dataverse)
-  ---------------------------------------------------------------------------------
-  Size: ~50 MB compressed | License: CC-BY 4.0 | Persistent DOI assigned
-  Target Audience: Econometricians, political scientists, peer reviewers, repliers
-  Contents:
-    * panel_house_annual.parquet & .rds (10,189 rows x 127 cols)
-    * panel_senate_annual.parquet & .rds (2,360 rows x 127 cols)
-    * panel_house_vw.parquet (180,418 roll call observation rows)
-    * panel_senate_vw.parquet (28,868 roll call observation rows)
-    * Complete Stan model definitions (analysis/stan/*.stan)
-    * Model execution runners (analysis/model-*.R) & helpers (analysis/helpers.R)
-    * Detailed Data Dictionary / Codebook (docs/codebook.md)
-
-  [TIER 2: Frozen Relational SQLite Database Artifact] (Zenodo / Harvard Dataverse)
-  ---------------------------------------------------------------------------------
-  Size: ~2.5 GB compressed (.sqlite.zst) | License: ODbL 1.0 / CC-BY 4.0
-  Target Audience: Data scientists, secondary researchers extending base domains
-  Contents:
-    * congress.sqlite (compressed with Zstandard level 19)
-    * Contains all 51 relational tables and 5 views
-    * Full database DDL schemas (sql/tables/*.sql, sql/views/*.sql)
-    * Verified SHA-256 checksum manifest
-
-  [TIER 3: Upstream Raw Data Archives] (Institutional Archive / Harvard Dataverse)
-  ---------------------------------------------------------------------------------
-  Size: ~2.8 GB total (excluding restricted commercial data)
-  Target Audience: Pipeline engineers, audit teams verifying raw ETL parsing
-  Modular Tarballs:
-    * raw_govtrack_voteview_congress.tar.gz (~215 MB) - Public domain / CC0
-    * raw_eia_carma_noaa_prism.tar.gz (~620 MB) - Public domain / academic
-    * raw_census_bls_bea_cffr.tar.gz (~1.9 GB) - Public domain (U.S. Federal)
-    * Restricted Data Protocol:
-      - CQ Voting & Elections: Retained locally; scripts provide exact query instructions
-      - OpenSecrets: Bulk files subject to CC BY-NC-SA 4.0 non-commercial redistribution
-```
-
-### 5.1 Repository Metadata Specification (DataCite 4.4 / Zenodo)
-
-| Metadata Field | Recommended Deposit Value |
-| :--- | :--- |
-| **Title** | Replication Package: Legislative Ideology, Campaign Contributions, and Environmental Policy in the U.S. Congress (103rd–114th Congress) |
-| **Creators / Authors** | Researcher Name(s), Department, Institution (ORCID: `0000-xxxx-xxxx-xxxx`) |
-| **Publication Date** | 2026 (or date of manuscript publication) |
-| **Resource Type** | Dataset / Software / Workflow |
-| **Description** | Comprehensive replication package containing annual congressional district and state panel datasets (1993–2016), Bayesian Stan 2.30+ models for hierarchical 2PL item response theory (IRT) and vote-level campaign contribution inducements, modular R ETL ingestion scripts, and SQLite analytical schemas uniting federal spending, electoral returns, environmental voting scores (LCV), energy production (EIA), and climate degree days. |
-| **Keywords** | Political Science, Environmental Politics, Ideal Points, Item Response Theory, Bayesian Stan, Campaign Contributions, Energy Policy, Congress, SQLite |
-| **License** | Creative Commons Attribution 4.0 International (CC-BY 4.0) for panel data; MIT License for pipeline code; Open Database License (ODbL) for SQLite database. |
-| **Related Identifiers** | IsSupplementTo (DOI of journal publication); References (Voteview DOI, OpenSecrets URL, EIA API, Census STF3D). |
-
----
-
-## 6. End-to-End Replication Instructions
-
-### 6.1 Fast Replication (Starting from Tier 1 Processed Panels)
-An external researcher seeking to replicate the empirical findings and Bayesian MCMC models without rebuilding the 14 GB SQLite database should:
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/username/congress.git
-   cd congress
-   ```
-2. Restore the frozen R environment via `renv`:
+### 5.1 Model Replication (Using Existing Database & Master Panels)
+To replicate the empirical findings and Bayesian MCMC models directly from `congress.sqlite`:
+1. Restore the pinned R environment via `renv`:
    ```R
    renv::restore()
    ```
-3. Download the Tier 1 panel package from Zenodo (`doi:10.5281/zenodo.xxxxxxx`) into `data/export/` or directly run the models:
+2. Execute the Bayesian Stan models directly against the SQLite database:
    ```bash
+   # Run Hierarchical 2PL IRT model on House roll calls
    Rscript analysis/model-hierarchical.R --house --iter 2000 --chains 4
+
+   # Run Campaign Inducements model on Waxman-Markey (H.R. 2454)
    Rscript analysis/model-inducements.R --house --congress 111 --bill "hr2454"
    ```
 
-### 6.2 Full Pipeline Replication (Starting from Raw Sources & SQLite)
-An external researcher seeking to build `congress.sqlite` entirely from scratch should:
+### 5.2 Full Pipeline Rebuild (Starting from Raw Sources & SQLite Bootstrap)
+To build `congress.sqlite` entirely from scratch:
 1. Stage the genuine upstream files in `raw/` according to the paths in Section 2.
 2. Initialize and bootstrap the database:
    ```R

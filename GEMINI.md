@@ -189,8 +189,8 @@ All upstream data domains required by legacy `~/Projects/congress-legacy/Data/pa
   - Created comprehensive replication manifest `docs/raw-data-manifest.md` covering all 27 upstream raw data feeds across 6 primary thematic domains.
   - Mapped canonical upstream URLs, providers, local storage patterns in `raw/`, destination schemas in `sql/tables/`, ingestion scripts in `data/`, and temporal/spatial resolutions.
   - Defined licensing and redistribution conditions across public domain, CC BY-NC-SA 4.0, and proprietary sources (CQ Voting & Elections).
-  - Designed open-science FAIR data deposit strategy for Zenodo / Harvard Dataverse across 3 tiers (Tier 1 core panels ~50 MB, Tier 2 frozen SQLite database ~2.5 GB, Tier 3 modular raw data tarballs ~2.8 GB) with DataCite 4.4 metadata specifications.
-  - Provided dual end-to-end replication workflows for external researchers (fast replication from frozen panels vs full pipeline rebuild from raw sources).
+  - Provided dual end-to-end replication workflows for researchers (model estimation from SQLite panels vs full pipeline rebuild from raw sources).
+  - Spun out formal Zenodo / Harvard Dataverse open-science deposit specifications into backlog card `Archival: Zenodo & Harvard Dataverse Open Science Deposit Plan` (ID: `6ade7753c64bac6b4077d962`).
 
 - **Card:** `8. Write Technical Architecture README` (ID: `6ac9ecbcc1c17d7766262175`)
   - Authored comprehensive project narrative in `README.md` featuring full pipeline DAG and architecture flowcharts.
@@ -204,6 +204,7 @@ All upstream data domains required by legacy `~/Projects/congress-legacy/Data/pa
 
 ### Next Queue Candidates (`To Do` on Trello):
 - None in `To Do`. Candidate backlog items on Trello:
+  - `Archival: Zenodo & Harvard Dataverse Open Science Deposit Plan` (ID: `6ade7753c64bac6b4077d962`)
   - `Architecture: Refactor analysis synthesis scripts into SQL views` (ID: `6acab2c5ee15e00b864b81bf`)
   - `Model: Bayesian Small-Area Estimation of District Electricity & CO2 Consumption` (ID: `6ad4726626cfb175bfc0523b`)
   - `Revisit non-panel legacy data sources & auxiliary manuscript analyses` (ID: `6ad482e2bb6ab59a2beefe51`)

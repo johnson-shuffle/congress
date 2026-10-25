@@ -21,7 +21,7 @@ The platform powers core Bayesian Stan item response theory (IRT) and vote-level
 4. [Repository Structure](#4-repository-structure)
 5. [Pipeline Execution Order & Build Guide](#5-pipeline-execution-order--build-guide)
 6. [Bayesian Model Execution & CLI Workflow](#6-bayesian-model-execution--cli-workflow)
-7. [Data Manifest & Archival Strategy](#7-data-manifest--archival-strategy)
+7. [Data Manifest & Replication Provenance](#7-data-manifest--replication-provenance)
 8. [License & Citation](#8-license--citation)
 
 ---
@@ -311,10 +311,10 @@ Fitted draws and tidy posterior summary statistics are saved directly to `analys
 
 ---
 
-## 7. Data Manifest & Archival Strategy
+## 7. Data Manifest & Replication Provenance
 
 External replication and research provenance are documented across dedicated technical specifications:
-- **[docs/raw-data-manifest.md](docs/raw-data-manifest.md):** Detailed provenance catalog for all 27 raw data feeds, listing canonical upstream URLs, schema keys, licensing conditions, and the **Three-Tier Archival Deposit Plan** for Zenodo / Harvard Dataverse.
+- **[docs/raw-data-manifest.md](docs/raw-data-manifest.md):** Detailed provenance catalog for all 27 raw data feeds, listing canonical upstream URLs, schema keys, licensing conditions, and full pipeline replication instructions.
 - **[docs/spatial-climate-specification.md](docs/spatial-climate-specification.md):** Thermal unit conversions (MMBtu), EPA carbon emissions factors, spatial nearest-neighbor joins, and BLS CPI-U real deflators.
 - **[docs/crosswalk-specification.md](docs/crosswalk-specification.md):** Detailed resolution algorithms linking Bioguide, GovTrack, ICPSR, OpenSecrets CID, and VoteSmart identifiers.
 - **[docs/non-panel-data-sources.md](docs/non-panel-data-sources.md):** Audit of 9 auxiliary legacy datasets (Clean Power Plan Goal Visualizer, Stewart Committee Rosters, ADAGE, etc.) used for standalone figures.
