@@ -323,7 +323,7 @@ External replication and research provenance are documented across dedicated tec
 - **[docs/raw-data-manifest.md](docs/raw-data-manifest.md):** Detailed provenance catalog for all 27 raw data feeds, listing canonical upstream URLs, schema keys, licensing conditions, and full pipeline replication instructions.
 - **[docs/spatial-climate-specification.md](docs/spatial-climate-specification.md):** Thermal unit conversions (MMBtu), EPA carbon emissions factors, spatial nearest-neighbor joins, and BLS CPI-U real deflators.
 - **[docs/crosswalk-specification.md](docs/crosswalk-specification.md):** Detailed resolution algorithms linking Bioguide, GovTrack, ICPSR, OpenSecrets CID, and VoteSmart identifiers.
-- **[docs/non-panel-data-sources.md](docs/non-panel-data-sources.md):** Audit of 9 auxiliary legacy datasets (Clean Power Plan Goal Visualizer, Stewart Committee Rosters, ADAGE, etc.) used for standalone figures.
+- **`docs/non-panel-data-sources.md`:** Internal audit cataloging 9 auxiliary legacy datasets (Clean Power Plan Goal Visualizer, Stewart Committee Rosters, ADAGE, etc.) used for standalone figures.
 
 ---
 

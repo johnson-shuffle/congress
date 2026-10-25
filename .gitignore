@@ -19,4 +19,5 @@ analysis/results/*.rds
 .agents/
 GEMINI.md
 RECAP.md
+docs/non-panel-data-sources.md
 

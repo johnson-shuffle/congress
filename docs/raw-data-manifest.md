@@ -381,7 +381,7 @@ This document provides a comprehensive inventory and replication manifest for th
 
 ## 4. Cross-Reference to Auxiliary & Backlog Data Feeds
 
-In addition to the 27 core panel feeds documented above, 9 auxiliary data sources from earlier research stages or standalone manuscript figures are cataloged in [`docs/non-panel-data-sources.md`](non-panel-data-sources.md):
+In addition to the 27 core panel feeds documented above, 9 auxiliary data sources from earlier research stages or standalone manuscript figures are cataloged in internal specification `docs/non-panel-data-sources.md`:
 
 1. **EPA Clean Power Plan State Goal Visualizer:** Generator-level baseline used for Figure 1 and Appendix B in the Carbon manuscript.
 2. **Charles Stewart III Congressional Committee Assignments:** Committee rosters used for qualitative validation of extreme legislators in Section 5.3 of the Ideology manuscript.
